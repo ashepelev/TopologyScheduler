@@ -1,0 +1,47 @@
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [0, 1]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [0, 2]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [0, 3]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [0, 4]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [0, 5]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [0, 6]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [1, 7]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [1, 8]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [1, 9]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [1, 10]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [2, 11]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [2, 12]
+ - !!python/object:Edge.Edge
+   maxb: 100
+   node_pair: !!python/tuple [2, 13]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [2, 14]
+ - !!python/object:Edge.Edge
+   maxb: 1000
+   node_pair: !!python/tuple [14, 15]
+
+
