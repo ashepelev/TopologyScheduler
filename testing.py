@@ -32,10 +32,11 @@ sched.print_route(route_matrix)
 stream_nodes.close()
 stream_edges.close()
 
-exit()
+
 
 gr = GraphDrawer.GraphDrawer(st.node_list,st.edge_list)
 graph = gr.get_edges()
 labels = gr.get_labels()
 gr.draw_graph(graph,labels=labels, graph_layout='spring',draw_bandwidth='avg')
 
+exit()

@@ -19,35 +19,35 @@ class Scheduler:
         self.node_list = node_list
         self.edge_list = edges_list
         self.dim = len(node_list)
-        self.infinity = 1000000
+        self.infinity = 10000
         self.undefined = -1
 
     def make_adjacency_matrix(self):
-        matrix = np.matrix(np.zeros((self.dim,self.dim),dtype=np.int))
+     #   matrix = np.matrix(np.zeros((self.dim,self.dim),dtype=np.int))
+        matrix = [[self.infinity for x in xrange(self.dim)] for y in xrange(self.dim)]
+     #   test = matrix[0][1]
         for edge in self.edge_list:
-            pair = edge.node_pair
-            matrix[pair[0],pair[1]] = 1
-            matrix[pair[1],pair[0]] = 1
+            i,j = edge.node_pair
+            test = matrix[i][j]
+            matrix[i][j] = int(1)
+            matrix[j][i] = int(1)
         return matrix
 
     def min_distance(self,dist,q):
         min = sys.maxint
         minind = -1
-        for i in range(0,len(q)):
-            if (dist[q[i]] < min):
-                min = dist[q[i]]
-                minind = q[i]
+        for elem in q:
+            if (dist[elem] < min):
+                min = dist[elem]
+                minind = elem
         return minind
 
-    def dijkstra(self,matrix,src,previous):
-        dist = [0]* self.dim
-        previous = [0] * self.dim
-
-        for i in range(0,self.dim):
-            dist[i] = self.infinity
-            previous[i] = self.undefined
-
+    def dijkstra(self,matrix,src):
+        dist = [self.infinity for x in xrange(self.dim)]
+        previous = [self.undefined for x in xrange(self.dim)]
+        route_list = [[] for x in xrange(self.dim)]
         dist[src] = 0
+    #    previous[src] = src
         q = Set()
         for i in range(0,self.dim):
             q.add(i)
@@ -56,41 +56,47 @@ class Scheduler:
             if (len(q) == self.dim):
                 u = src
             else:
-                u = self.minDistance(dist,q)
+                u = self.min_distance(dist,q)
             q.remove(u)
-            
-            if (dist[i] == self.infinity):
-                break
+
+            target = u
+            path_node = u
+            while previous[path_node] != self.undefined:
+                route_list[target].append(path_node)
+                path_node = previous[path_node]
+
+            route_list[target].reverse() # as we aggregate it reverse
+
             for j in range(0,self.dim):
-                if (matrix[u,j] == self.infinity):
+                if j == u:
                     continue
-                alt = dist[i] + matrix[u,j]
-                if (alt < dist[j]):
+                alt = dist[u] + matrix[u][j]
+                if alt < dist[j]:
                     dist[j] = alt
                     previous[j] = u
-        return (dist,previous)
+
+        return (dist,route_list)
 
     def calc_routes(self):
         matrix = self.make_adjacency_matrix()
-        route_matrix = [[0] * self.dim] * self.dim#np.matrix((self.dim,self.dim),dtype=Route)
+        route_matrix = [] #np.matrix((self.dim,self.dim),dtype=Route)
         for i in range(0,self.dim):
             #previous = np.zeros((1,self.dim),dtype=np.int)
-            (dist, previous) = self.dijkstra(matrix,i,previous)
-            print previous
+            (dist, route_list) = self.dijkstra(matrix,i)
+           # print previous
+            route_matrix.append([])
             for j in range(0,self.dim):
-                route = []
-                u = j
-                while previous[u] != self.undefined:
-                    route.append()
-                    u = previous[u]
-                rt = Route(dist[j],route)
-                route_matrix[i,j] = rt
+                rt = Route(dist[j],route_list[j])
+                route_matrix[i].append(rt)
+        return route_matrix
 
     def print_route(self, route_matrix):
         for i in range(0,self.dim):
             for j in range(0,self.dim):
-                sys.stdout.write("From" + str(i) + " to " + str(j) + " dist " + route_matrix[i,j].dist + " Route: ")
-                print route_matrix[i,j].route
+                sys.stdout.write("From " + str(i) + " to " + str(j) + " dist " + str(route_matrix[i][j].dist) + " Route: ")
+                print route_matrix[i][j].route
+
+
 
 
 class Route:
