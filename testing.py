@@ -8,6 +8,8 @@ import Edge
 import State
 import Scheduler
 
+import TrafficGen
+
 stream_nodes = file('topology-examples/nodes1.yaml','r')
 #print yaml.load(stream)
 #print yaml.dump()
@@ -31,6 +33,9 @@ sched.print_route(route_matrix)
 
 stream_nodes.close()
 stream_edges.close()
+
+#trgen = TrafficGen.TrafficGen(node_list)
+#trgen.generator()
 
 
 

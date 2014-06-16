@@ -28,7 +28,7 @@ class GraphDrawer:
         i = 0
         for node in self.nodes:
             try:
-                labels[i] = node.hostname
+                labels[i] = str(node.id) + " " + node.hostname
             except AttributeError:
                 labels[i] = "Switch id " + str(node.id)
             i += 1

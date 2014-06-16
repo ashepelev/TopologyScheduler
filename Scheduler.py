@@ -3,6 +3,7 @@ __author__ = 'ash'
 import numpy as np
 from sets import Set
 import sys
+import pulp
 
 class Task:
 
@@ -12,8 +13,6 @@ class Task:
         self.public_priority = public_priority
 
 class Scheduler:
-
-
 
     def __init__(self,node_list,edges_list):
         self.node_list = node_list
@@ -51,7 +50,6 @@ class Scheduler:
         q = Set()
         for i in range(0,self.dim):
             q.add(i)
-
         while (len(q) > 0):
             if (len(q) == self.dim):
                 u = src
@@ -64,7 +62,7 @@ class Scheduler:
             while previous[path_node] != self.undefined:
                 route_list[target].append(path_node)
                 path_node = previous[path_node]
-
+            route_list[target].append(src)
             route_list[target].reverse() # as we aggregate it reverse
 
             for j in range(0,self.dim):
@@ -95,9 +93,6 @@ class Scheduler:
             for j in range(0,self.dim):
                 sys.stdout.write("From " + str(i) + " to " + str(j) + " dist " + str(route_matrix[i][j].dist) + " Route: ")
                 print route_matrix[i][j].route
-
-
-
 
 class Route:
 
