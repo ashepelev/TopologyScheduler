@@ -5,22 +5,34 @@ import random
 import time
 import os
 import sys
+import BandwidthHistory
 
 class TrafficGen:
 
-    def __init__(self,node_list):
+    def __init__(self, node_list, bwhist):
         self.node_list = node_list
-        self.start = time.clock()
+        #self.start = time.clock()
         self.traffic = dict()
+        self.bw_hist = bwhist
+        self.bw_refresh = 2
+        self.bw_id = 0 # this field is required for recording simultaneous channel usage
 
     def generator(self):
+        """
+        Generating traffic - packets width dst, src and len
+        Every 2 seconds dumps the aggregated info to calculate the bandwidth
+        """
         self.start = time.clock()
+        worktime = time.clock()
         while True:
-            rand = random.randint(0,5)
+            if time.clock() - worktime > 10: # for tests. Get stat for 10 seconds
+                break;
+            rand = random.randint(0,5000) # there is a chance for packet to appear
             if rand == 0:
                 capt_time = time.clock()
-                if capt_time - self.start > 2: # refresh each 2 seconds
+                if capt_time - self.start > self.bw_refresh: # refresh each 2 seconds
                     self.process_bandwidth(capt_time)
+                    self.bw_id += 1
                     self.start = capt_time
                     self.traffic.clear()
                 (src,dst) = self.example_load()
@@ -35,11 +47,13 @@ class TrafficGen:
 
 
     def process_bandwidth(self,capt_time):
-        os.system('clear')
+        #os.system('clear')
+        print self.bw_refresh
         for k in self.traffic.keys():
             bandwidth = self.traffic[k] / (capt_time - self.start)
             (src,dst) = k
-            sys.stdout.write(str(src) + " > " + str(dst) + "\t\t" + str(bandwidth) + "\n")
+            self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id)
+            #sys.stdout.write(str(src) + " > " + str(dst) + "\t\t" + str(bandwidth) + "\n")
 
     def example_load(self):
         """

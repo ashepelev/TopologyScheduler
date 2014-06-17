@@ -2,6 +2,7 @@ __author__ = 'ash'
 
 import random
 import Node
+import Edge
 
 class State:
 

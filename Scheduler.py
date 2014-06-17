@@ -4,6 +4,7 @@ import numpy as np
 from sets import Set
 import sys
 import pulp
+import Node
 
 class Task:
 
@@ -11,6 +12,14 @@ class Task:
         self.vm_dep_list = vm_dep_list
         self.storage_priority = storage_priority
         self.public_priority = public_priority
+
+    @staticmethod
+    def example_task():
+        vm_dep_list = [(7,3),(6,4),(13,5),(9,4)] # list of dependencies. format: (<compute_node_with_vm_id>,<priority>)
+        storage_priority = 4
+        public_priority = 4
+        task = Task(vm_dep_list,storage_priority,public_priority)
+        return task
 
 class Scheduler:
 
@@ -87,6 +96,63 @@ class Scheduler:
                 rt = Route(dist[j],route_list[j])
                 route_matrix[i].append(rt)
         return route_matrix
+
+    @staticmethod
+    def build_distances(bw_hist):
+        # assuming that edge_list has changed after TrafficGen
+        route_matrix = bw_hist.route_matrix
+        edge_dict = bw_hist.edge_dict
+        dim = len(route_matrix)
+        dist = [[0 for x in range(0,dim)] for y in range(0,dim)]
+        for i in range(0,dim):
+            for j in range(0,dim):
+                route = route_matrix[i][j].route
+                route_sum = 0
+                for k in range(0,len(route)-1):
+                    (v1,v2) = (route[k],route[k+1])
+                    if edge_dict.has_key((v1,v2)):
+                        route_sum += edge_dict[(v1,v2)].avgbw
+                    else:
+                        route_sum += edge_dict[(v2,v1)].avgbw
+                dist[i][j] = route_sum
+        return dist
+
+    @staticmethod
+    def prepare_priority_list(task,node_list):
+        # construct (<storage>,<priority> list)
+        st_dep_list = []
+        for x in node_list:
+            if type(x) is Node.Storage:
+                st_dep_list.append((x.id,task.storage_priority))
+        # construct public priority list
+        pub_dep_list = []
+        for x in node_list:
+            if type(x) is Node.NetworkNode:
+               pub_dep_list.append((x.id,task.public_priority))
+        # append to vm dep_list
+        priorities = []
+        priorities.extend(task.vm_dep_list)
+        priorities.extend(st_dep_list)
+        priorities.extend(pub_dep_list)
+        return priorities
+
+    @staticmethod
+    def schedule(dist,task,node_list):
+        priorities = Scheduler.prepare_priority_list(task,node_list)
+        min_dist = sys.maxint
+        min_id = -1
+        for node in node_list:
+            if not isinstance(node,Node.ComputeNode):
+                continue
+            sum = 0
+            for prior in priorities:
+                sum += dist[node.id][prior[0]]*prior[1]
+            sys.stdout.write("For node " + str(node.id) + " distance is " + str(sum) + "\n")
+            if sum < min_dist:
+                min_dist = sum
+                min_id = node.id
+        return min_id
+
 
     def print_route(self, route_matrix):
         for i in range(0,self.dim):

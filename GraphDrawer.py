@@ -76,7 +76,7 @@ class GraphDrawer:
                 edge_labels.append(edge.maxb)
         elif draw_bandwidth == 'avg':
             for edge in self.edges:
-                edge_labels.append(edge.avg_bandw)
+                edge_labels.append(edge.avgbw)
         else:
             print "Wrong draw_bandwidth type param"
 
