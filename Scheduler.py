@@ -3,7 +3,7 @@ __author__ = 'ash'
 import numpy as np
 from sets import Set
 import sys
-import pulp
+#import pulp
 import Node
 
 class Task:

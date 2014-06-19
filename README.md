@@ -1,6 +1,14 @@
 topology-builder
 ================
 
+Author: Artem Shepelev
+Programming Language: Python
+Dedicated project: OpenStack
+This repository is created and filled up due to participation in the Google Summer of Code 2014 contest
+
+Requirements: python-networkx
+
+
 The package includes simple topology scheduler
 The information about the topology is loaded within the yaml-syntax description files. There are a pair of files: for nodes and adges.
 With the help of python-network we allow to draw the loaded graph and check it.
@@ -16,3 +24,6 @@ There are some preparations. They include:
 5) Combine it into one list of nodes and priorities
 
 Then we launch the very simple scheduler which iterates through compute nodes and topology and sums the distance the important nodes with coefficients equal to the priority of this nodes.
+
+To check it - just launch the testing.py
+If no networkx installed - just comment the import line and last 5 lines of testing.py
