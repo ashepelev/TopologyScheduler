@@ -2,8 +2,11 @@ topology-builder
 ================
 
 Author: Artem Shepelev
+
 Programming Language: Python
+
 Dedicated project: OpenStack
+
 This repository is created and filled up due to participation in the Google Summer of Code 2014 contest
 
 Requirements: python-networkx
