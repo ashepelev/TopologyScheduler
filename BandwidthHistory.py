@@ -15,6 +15,9 @@ class BandwidthHistory:
 
 
     def append(self,pair,value,time,bw_id):
+        """
+        Mapping the traffic data of the route to the edges (channels) of the route
+        """
         (src,dst) = pair
         route = self.route_matrix[src][dst].route
         ei = Edge.EdgeInfo(value,time,bw_id)

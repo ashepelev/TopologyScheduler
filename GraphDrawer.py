@@ -18,12 +18,18 @@ class GraphDrawer:
         self.edges = edges_list
 
     def get_edges(self):
+        """
+        Extracts pairs of nodes from the Edge objects
+        """
         edges = []
         for edge in self.edges:
             edges.append(edge.node_pair)
         return edges
 
     def get_labels(self):
+        """
+        Getting the labels for nodes on the graph
+        """
         labels = {}
         i = 0
         for node in self.nodes:

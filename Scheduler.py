@@ -42,6 +42,9 @@ class Scheduler:
         return matrix
 
     def min_distance(self,dist,q):
+        """
+        Finds in dist minimal distance with indexes from the queue q
+        """
         min = sys.maxint
         minind = -1
         for elem in q:
@@ -51,6 +54,9 @@ class Scheduler:
         return minind
 
     def dijkstra(self,matrix,src):
+        """
+        Standard Dijkstra algorithm. For source finds shortest pathes to every other node.
+        """
         dist = [self.infinity for x in xrange(self.dim)]
         previous = [self.undefined for x in xrange(self.dim)]
         route_list = [[] for x in xrange(self.dim)]
@@ -85,6 +91,9 @@ class Scheduler:
         return (dist,route_list)
 
     def calc_routes(self):
+        """
+        With dijkstra algorithm builds the route matrix in the whole topology
+        """
         matrix = self.make_adjacency_matrix()
         route_matrix = [] #np.matrix((self.dim,self.dim),dtype=Route)
         for i in range(0,self.dim):
@@ -99,6 +108,10 @@ class Scheduler:
 
     @staticmethod
     def build_distances(bw_hist):
+        """
+        Takes the information about the weights on edges
+        and builds the matrix of distances between nodes.
+        """
         # assuming that edge_list has changed after TrafficGen
         route_matrix = bw_hist.route_matrix
         edge_dict = bw_hist.edge_dict
@@ -119,6 +132,10 @@ class Scheduler:
 
     @staticmethod
     def prepare_priority_list(task,node_list):
+        """
+        Takes the information about the task
+        And constructs the list of pairs : (<node>,<priority>)
+        """
         # construct (<storage>,<priority> list)
         st_dep_list = []
         for x in node_list:
@@ -138,6 +155,10 @@ class Scheduler:
 
     @staticmethod
     def schedule(dist,task,node_list):
+        """
+        Simple scheduler. For every appropriate node (Compute node)
+        finds the sum to the prior nodes
+        """
         priorities = Scheduler.prepare_priority_list(task,node_list)
         min_dist = sys.maxint
         min_id = -1
@@ -146,8 +167,8 @@ class Scheduler:
                 continue
             sum = 0
             for prior in priorities:
-                sum += dist[node.id][prior[0]]*prior[1]
-            sys.stdout.write("For node " + str(node.id) + " distance is " + str(sum) + "\n")
+                sum += dist[node.id][prior[0]]*prior[1] # the sum of <distance to prior node> * <priority of node>
+            # sys.stdout.write("For node " + str(node.id) + " distance is " + str(sum) + "\n") # debug line
             if sum < min_dist:
                 min_dist = sum
                 min_id = node.id

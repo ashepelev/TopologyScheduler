@@ -46,6 +46,7 @@ stream_edges.close()
 
 dist = Scheduler.Scheduler.build_distances(bwhist)
 task = Scheduler.Task.example_task()
+
 print Scheduler.Scheduler.schedule(dist,task,node_list)
 
 gr = GraphDrawer.GraphDrawer(node_list,edge_list)

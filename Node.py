@@ -2,9 +2,12 @@ __author__ = 'ash'
 
 
 class Node:
+    """
+    Parent for all topology classes
+    """
 
     def __init__(self, vid):
-        self.id = vid
+        self.id = vid # characterized only by id
 
  #   def add_neighbours_by_one(self, n):
  #       self.neighbours.append(n)
@@ -14,6 +17,9 @@ class Node:
 
 
 class Switch(Node):
+    """
+    Characterizes only by ip.
+    """
 
     def __init__(self, vid):
         self.id = vid
@@ -22,7 +28,7 @@ class Router(Node):
 
     def __init__(self,vid,hostn):
         self.id = vid
-        self.hostname = hostn
+        self.hostname = hostn # we add hostname (or can add ip)
 
     def check_ip(self, ipa):
         octets = ipa.split('.')
@@ -50,7 +56,9 @@ class Router(Node):
 
 
 class Endpoint(Node):
-
+    """
+    Endpoint is the parent class for all service nodes of OpenStack
+    """
     ip_addr = ""
     hostname = ""
 
