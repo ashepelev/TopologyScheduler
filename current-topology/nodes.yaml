@@ -1,0 +1,11 @@
+ - !!python/object:Node.Switch
+   id: 0
+ - !!python/object:Node.ControllerNode
+   ip_addr: 192.168.0.101
+   id: 1
+ - !!python/object:Node.ComputeNode
+   ip_addr: 192.168.0.100
+   id: 2
+ - !!python/object:Node.Router
+   ip_addr: 192.168.0.1
+   id: 3

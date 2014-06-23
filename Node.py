@@ -26,9 +26,9 @@ class Switch(Node):
 
 class Router(Node):
 
-    def __init__(self,vid,hostn):
+    def __init__(self,vid,ip_addr):
         self.id = vid
-        self.hostname = hostn # we add hostname (or can add ip)
+        self.ip_addr = ip_addr # we add hostname (or can add ip)
 
     def check_ip(self, ipa):
         octets = ipa.split('.')
@@ -59,12 +59,10 @@ class Endpoint(Node):
     """
     Endpoint is the parent class for all service nodes of OpenStack
     """
-    ip_addr = ""
-    hostname = ""
 
-    def __init__(self,vid,hostn):
+    def __init__(self,vid,ip_addr):
         self.id = vid
-        self.hostname = hostn
+        self.ip_addr = ip_addr
 
     def assign_ip(self,ipa):
         self.ip_addr = ipa
@@ -73,30 +71,13 @@ class Endpoint(Node):
         self.hostname = hn
 
 class ComputeNode(Endpoint):
-
-    def assign_vcpu(self, vc):
-        self.vcpu = vc
-
-    def assign_ram(self,r):
-        self.ram = r
+    pass
 
 class Storage(Endpoint):
-
-   def __init__(self,vid,hostn):
-        self.id = vid
-        self.hostname = hostn
-
-   def setLoad(self,load):
-       self.load = load
+    pass
 
 class NetworkNode(Endpoint):
-    def __init__(self,vid,hostn):
-        self.id = vid
-        self.hostname = hostn
-
+    pass
 
 class CloudController(Endpoint):
-
-    def __init__(self,vid,hostn):
-        self.id = vid
-        self.hostname = hostn
+    pass
