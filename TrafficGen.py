@@ -48,7 +48,7 @@ class TrafficGen:
 
     def process_bandwidth(self,capt_time):
         #os.system('clear')
-        print self.bw_refresh
+        print "Bandwidth refresh " + str(self.bw_refresh) + " seconds"
         for k in self.traffic.keys():
             bandwidth = self.traffic[k] / (capt_time - self.start) # simple bandwidth calculate formula. capt_time is the last time record in this period
             (src,dst) = k
