@@ -1,4 +1,4 @@
-TopologyScheduler (renamed from topology-builder)
+TopologyScheduler
 ================
 
 Author: Artem Shepelev
@@ -10,6 +10,8 @@ Dedicated project: OpenStack
 This repository is created and filled up due to participation in the Google Summer of Code 2014 contest
 
 Requirements: python-networkx
+
+Renamed from: topology-builder
 
 
 The package includes simple topology scheduler
