@@ -10,15 +10,7 @@ import Node
 import os
 
 
-class Packet:
-    """
-    Class describes the packet info
-    """
 
-    def __init__(self, src, dst, length):
-        self.src = src
-        self.dst = dst
-        self.len = length
 
 class TrafficServer:
 
@@ -33,6 +25,8 @@ class TrafficServer:
 
         self.router_id = self.get_router_id()
         self.node_dict = self.get_node_dict()
+
+        self.previous_packet_data = dict()
 
 
     def launch(self,port):
@@ -82,31 +76,40 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
             self.handle_data(data)
 
     def handle_data(self,data):
-        traffic_records = data.split(',')
+        for data_chunk in data:
+            traffic_records = data_chunk.split(',')
+            traffic_server = self.server.traffic
+            for i in range(0,len(traffic_records)):
+                traf = traffic_records[i]
+                split_data = traf.split('|')
+                if len(split_data) < 3:
+                    remains_data = True
+                    traffic_server[self.hostname] = remains_data
+                else:
+                    (src_id,dst_id,leng) = self.get_packet_info(split_data)
+                #   pk = Packet(src,dst,leng)
+                #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
+                    if (src_id,dst_id) not in traffic_server.traffic_stat:
+                        traffic_server.traffic_stat[(src_id,dst_id)] = 0
+                    traffic_server.traffic_stat[(src_id,dst_id)] += int(leng)
+
+    def get_packet_info(self,split_data):
         traffic_server = self.server.traffic
-        for i in range(0,len(traffic_records)-1):
-            traf = traffic_records[i]
-            split_data = traf.split('|')
+        src = split_data[0]
+        if src not in traffic_server.node_dict:
+            src_id = traffic_server.router_id
+        else:
+            src_id = traffic_server.node_dict[src]
 
-            src = split_data[0]
-            if src not in traffic_server.node_dict:
-                src_id = traffic_server.router_id
-            else:
-                src_id = traffic_server.node_dict[src]
+        dst = split_data[1]
+        if dst not in traffic_server.node_dict:
+            dst_id = traffic_server.router_id
+        else:
+            dst_id = traffic_server.node_dict[dst]
 
-            dst = split_data[1]
-            if dst not in traffic_server.node_dict:
-                dst_id = traffic_server.router_id
-            else:
-                dst_id = traffic_server.node_dict[dst]
+        leng = split_data[2]
 
-            leng = split_data[2]
-
-            pk = Packet(src,dst,leng)
-        #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
-            if (src_id,dst_id) not in traffic_server.traffic_stat:
-                traffic_server.traffic_stat[(src_id,dst_id)] = 0
-            traffic_server.traffic_stat[(src_id,dst_id)] += leng
+        return (src_id,dst_id,leng)
 
     def process_bandwidth(self,capt_time):
         traffic_server = self.server.traffic
@@ -120,7 +123,9 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 		 	
 
     def get_data(self):
-        data = self.request.recv(1024)
+        data = []
+        while self.request.recv != 0:
+            data.append(self.request.recv(2048))
         print("{}: data accepted: {}".format(self.hostname, data))
         return data
 
