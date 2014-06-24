@@ -67,7 +67,7 @@ class TrafficServer:
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         self.hostname = self.request.getsockname()[0]
-        traffic_server = self.traffic_stat
+        traffic_server = self.server.traffic
         print 'Connected: ' + str(self.request.getsockname())
         while True:
             capt_time = time.clock()
@@ -83,37 +83,39 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 
     def handle_data(self,data):
         traffic_records = data.split(',')
+        traffic_server = self.server.traffic
         for i in range(0,len(traffic_records)-1):
             traf = traffic_records[i]
             split_data = traf.split('|')
 
             src = split_data[0]
-            if src not in self.traffic.node_dict:
-                src_id = self.traffic.router_id
+            if src not in traffic_server.node_dict:
+                src_id = traffic_server.router_id
             else:
-                src_id = self.traffic.node_dict[src]
+                src_id = traffic_server.node_dict[src]
 
             dst = split_data[1]
-            if dst not in self.traffic.node_dict:
-                dst_id = self.traffic.router_id
+            if dst not in traffic_server.node_dict:
+                dst_id = traffic_server.router_id
             else:
-                dst_id = self.traffic.node_dict[dst]
+                dst_id = traffic_server.node_dict[dst]
 
             leng = split_data[2]
 
             pk = Packet(src,dst,leng)
         #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
-            if (src_id,dst_id) not in self.traffic.traffic_stat:
-                self.traffic.traffic_stat[(src_id,dst_id)] = 0
-            self.traffic.traffic_stat[(src_id,dst_id)] += leng
+            if (src_id,dst_id) not in traffic_server.traffic_stat:
+                traffic_server.traffic_stat[(src_id,dst_id)] = 0
+            traffic_server.traffic_stat[(src_id,dst_id)] += leng
 
     def process_bandwidth(self,capt_time):
+        traffic_server = self.server.traffic
         print "Bandwidth Refresh"
         os.system("clear")
-        for k in self.traffic.traffic_stat.keys():
-            bandwidth = self.traffic.traffic_stat[k] / (capt_time - self.traffic.start_time)
+        for k in traffic_server.traffic_stat.keys():
+            bandwidth = traffic_server.traffic_stat[k] / (capt_time - traffic_server.start_time)
             (src,dst) = k
-            self.traffic.bw_hist.append((src,dst),bandwidth,capt_time,self.traffic.bw_id)
+            traffic_server.bw_hist.append((src,dst),bandwidth,capt_time,traffic_server.bw_id)
             print "Src: " + src + " Dst: " + dst + " Bandwidth: " + bandwidth
 		 	
 
