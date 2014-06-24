@@ -1,4 +1,4 @@
-- !!python/object:Edge.Edge
+ - !!python/object:Edge.Edge
    maxb: 100
    node_pair: !!python/tuple [0, 1]
  - !!python/object:Edge.Edge

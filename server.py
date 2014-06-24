@@ -36,7 +36,7 @@ class TrafficServer:
 
 
     def launch(self,port):
-        HOST, PORT ='0.0.0.0', 12345
+        HOST, PORT ='0.0.0.0', port
         server = MyThreadedTCPServer((HOST, PORT),MyTCPHandler)
         server.traffic = self
         server_thread = threading.Thread(target=server.serve_forever)
@@ -46,15 +46,15 @@ class TrafficServer:
         print("Server started!")
 
     def get_topology(self):
-        yd = YamlDoc('current-topology/nodes.yaml',
-                     'current-topology/edges.yaml')
+        yd = YamlDoc.YamlDoc('current-topology/nodes.yaml','current-topology/edges.yaml')
         self.node_list = yd.node_list
         self.edge_list = yd.edge_list
 
     def get_node_dict(self):
         node_dict = dict()
-        for x in self.traffic.node_list:
-            node_dict[x.ip_addr] = x.id
+        for x in self.node_list:
+            if not isinstance(x,Node.Switch):
+                node_dict[x.ip_addr] = x.id
         return node_dict
 
     def get_router_id(self):
@@ -67,7 +67,7 @@ class TrafficServer:
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         self.hostname = self.request.getsockname()[0]
-        traffic_server = self.traffic
+        traffic_server = self.traffic_stat
         print 'Connected: ' + str(self.request.getsockname())
         while True:
             capt_time = time.clock()
@@ -128,3 +128,6 @@ class MyThreadedTCPServer(SocketServer.ThreadingMixIn,
     pass
 
 #if __name__ =="__main__":
+ts = TrafficServer()
+ts.get_topology()
+ts.launch(12345)

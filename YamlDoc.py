@@ -5,8 +5,10 @@ import string
 
 class YamlDoc:
 
-    nodes = []
-
-    def load_from_yaml(self,docName):
-        with open(docName,'r') as f:
-            self.nodes = yaml.load(f)
+    def __init__(self,node_doc,edge_doc):
+        stream_nodes = file(node_doc,'r')
+        stream_edges = file(edge_doc,'r')
+        self.node_list = yaml.load(stream_nodes)
+        self.edge_list = yaml.load(stream_edges)
+        stream_nodes.close()
+        stream_edges.close()

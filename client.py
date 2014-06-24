@@ -69,8 +69,8 @@ port = 12345
 #ipaddr = socket.gethostbyname(hostname)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((hostname, port))
-
-
+print "Connected!"
+print "Devices:"
 devices = pcapy.findalldevs()
 for d in devices:
     print d
@@ -89,7 +89,7 @@ while (1) :
     if not res:
        continue
     msg = str(src) + '|' + str(dst) + '|' + str(leng) + ','
-#    print "Sending: " + msg
+    print "Sending: " + msg
     #s.sendall(bytes(msg,'utf8'))
     s.sendall(msg)
 
