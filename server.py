@@ -78,6 +78,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
             self.handle_data(data)
 
     def handle_data(self,data):
+	
         for data_chunk in data:
             traffic_records = data_chunk.split(',')
             traffic_server = self.server.traffic
@@ -129,7 +130,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
     def get_data(self):
         data = ""
         while self.request.recv != 0:
-            data.append(self.request.recv(2048))
+            data += self.request.recv(2048)
         print("{}: data accepted: {}".format(self.hostname, data))
         return data
 
