@@ -65,11 +65,13 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         print 'Connected: ' + str(self.request.getsockname())
         while True:
             capt_time = time.clock()
+            """
             if capt_time - traffic_server.start_time > traffic_server.refresh_time:
                 self.process_bandwidth(capt_time)
                 traffic_server.bw_id += 1
                 traffic_server.start_time = capt_time
                 traffic_server.traffic_stat.clear()
+            """
             data = self.get_data()
             if len(data) < 5:
                 continue
@@ -82,17 +84,19 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
             for i in range(0,len(traffic_records)):
                 traf = traffic_records[i]
                 split_data = traf.split('|')
+                (src_id,dst_id,leng) = self.get_packet_info(split_data)
+                #   pk = Packet(src,dst,leng)
+                #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
+                if (src_id,dst_id) not in traffic_server.traffic_stat:
+                    traffic_server.traffic_stat[(src_id,dst_id)] = 0
+                traffic_server.traffic_stat[(src_id,dst_id)] += int(leng)
+                """
                 if len(split_data) < 3:
                     remains_data = True
                     traffic_server[self.hostname] = remains_data
                 else:
-                    (src_id,dst_id,leng) = self.get_packet_info(split_data)
-                #   pk = Packet(src,dst,leng)
-                #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
-                    if (src_id,dst_id) not in traffic_server.traffic_stat:
-                        traffic_server.traffic_stat[(src_id,dst_id)] = 0
-                    traffic_server.traffic_stat[(src_id,dst_id)] += int(leng)
 
+                """
     def get_packet_info(self,split_data):
         traffic_server = self.server.traffic
         src = split_data[0]
@@ -123,7 +127,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 		 	
 
     def get_data(self):
-        data = []
+        data = ""
         while self.request.recv != 0:
             data.append(self.request.recv(2048))
         print("{}: data accepted: {}".format(self.hostname, data))

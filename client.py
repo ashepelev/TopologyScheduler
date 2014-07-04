@@ -153,6 +153,7 @@ class ClientTraffic:
         #msgs.rstrip(',') # delete last comma
         return msgs
 
+
     def launch(self,my_hostname,server_port):
         hostname = my_hostname
         port = server_port
@@ -168,8 +169,8 @@ class ClientTraffic:
             (header, packet) = cap.next()
             capt_time = clock()
             if capt_time - self.start_time > self.refresh_time:
-                self.send_traffic(capt_time,s)
-
+                self.process_bandwidth(capt_time)
+                self.process_traffic(capt_time,s)
 
             (src,dst,leng,res) = self.parse_packet(packet)
             if not res:
@@ -209,3 +210,6 @@ class NetworkLoad:
             # error obtaining not significantly TO DO
             self.count /= 1024
             self.metric_ind += 1
+
+client = ClientTraffic("eth0.800")
+client.launch("10.2.0.52",12345)

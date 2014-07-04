@@ -161,17 +161,24 @@ class Scheduler:
         """
         priorities = Scheduler.prepare_priority_list(task,node_list)
         min_dist = sys.maxint
+        min_glob = sys.maxint
         min_id = -1
         for node in node_list:
             if not isinstance(node,Node.ComputeNode):
                 continue
-            sum = 0
+            max_route = sys.maxint()
             for prior in priorities:
-                sum += dist[node.id][prior[0]]*prior[1] # the sum of <distance to prior node> * <priority of node>
-            # sys.stdout.write("For node " + str(node.id) + " distance is " + str(sum) + "\n") # debug line
-            if sum < min_dist:
-                min_dist = sum
+                traf = dist[node.id][prior[0]]*prior[1]
+                if traf > max_route: # We are searching for maximum traffic on route link
+                    max_route = traf
+            if max_route < min_glob:
+                min_glob = max_route
                 min_id = node.id
+            #    sum += dist[node.id][prior[0]]*prior[1] # the sum of <distance to prior node> * <priority of node>
+            # sys.stdout.write("For node " + str(node.id) + " distance is " + str(sum) + "\n") # debug line
+            #if sum < min_dist:
+            #    min_dist = sum
+            #    min_id = node.id
         return min_id
 
 
