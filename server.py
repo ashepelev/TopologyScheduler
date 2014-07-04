@@ -129,6 +129,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
     def get_data(self):
         data = ""
         while self.request.recv != 0:
+
             data.append(self.request.recv(2048))
         print("{}: data accepted: {}".format(self.hostname, data))
         return data

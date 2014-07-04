@@ -154,8 +154,7 @@ class ClientTraffic:
         return msgs
 
 
-    def launch(self,my_hostname,server_port):
-        hostname = my_hostname
+    def launch(self,hostname,server_port):
         port = server_port
         #ipaddr = socket.gethostbyname(hostname)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -212,4 +211,4 @@ class NetworkLoad:
             self.metric_ind += 1
 
 client = ClientTraffic("eth0.800")
-client.launch("10.2.0.52",12345)
+client.launch("10.2.0.51",12345)
