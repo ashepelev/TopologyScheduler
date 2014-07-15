@@ -52,7 +52,7 @@ class TrafficGen:
         for k in self.traffic.keys():
             bandwidth = self.traffic[k] / (capt_time - self.start) # simple bandwidth calculate formula. capt_time is the last time record in this period
             (src,dst) = k
-            self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id) # Give command to append the traffic info
+            self.bw_hist.append((src,dst),bandwidth,self.bw_id) # Give command to append the traffic info
             #sys.stdout.write(str(src) + " > " + str(dst) + "\t\t" + str(bandwidth) + "\n")
 
     def example_load(self):

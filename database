@@ -1,0 +1,7 @@
+CREATE TABLE `traffic_info` (`id` INT(11) NOT NULL AUTO_INCREMENT,
+    -> `src` INT(3) NOT NULL,
+    -> `dst` INT(3) NOT NULL,
+    -> `time` timestamp NOT NULL,
+    -> `bandwidth` FLOAT(15,2) NOT NULL,
+    -> PRIMARY KEY(`id`)
+    -> );

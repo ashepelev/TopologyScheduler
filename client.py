@@ -10,7 +10,16 @@ import YamlDoc
 import Node
 from math import pow
 from time import clock
-from os import system
+from time import sleep
+import os
+import shlex
+from subprocess import Popen, PIPE, STDOUT
+from multiprocessing import Pool
+from threading import Timer
+from threading import Thread
+
+traffic_stat = dict()
+#pool = Pool(processes=2)
 
 
 class ClientTraffic:
@@ -21,10 +30,13 @@ class ClientTraffic:
         self.router_id = self.get_router_id()
         self.interface = sniff_int
         self.ip_addr = self.get_ip_address(sniff_int)
-        self.traffic_stat = dict()
 
         self.bw_id = -1
         self.refresh_time = 1
+        self.my_id = self.get_my_id()
+        self.time_to_send = False
+
+        self.ping_info = dict()
 
     def eth_addr (a) :
         b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
@@ -81,9 +93,6 @@ class ClientTraffic:
                 tcph_length = doff_reserved >> 4
                 h_size = eth_length + iph_length + tcph_length * 4
                 data = packet[h_size:]
-                if len(data)>2:
-                    if data.startswith(self.ip_addr): # if it is our traffic stat packets
-                        res = False
                 #print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
                 #print ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr) + ' Length : ' + str(len(packet))
                 return (s_addr,d_addr,len(packet),res)
@@ -106,80 +115,115 @@ class ClientTraffic:
                 return x.id
         print "No router found"
 
-    def get_hosts_id(self,packet):
-        traffic_server = self.server.traffic
-        if packet.src not in self.node_dict:
+    def get_hosts_id(self,src_ip,dst_ip):
+        #traffic_server = self.server.traffic
+        if src_ip not in self.node_dict:
             src_id = self.router_id
         else:
-            src_id = self.node_dict[packet.src]
-        if packet.dst not in self.node_dict:
+            src_id = self.node_dict[src_ip]
+        if dst_ip not in self.node_dict:
             dst_id = self.router_id
         else:
-            dst_id = self.node_dict[packet.dst]
+            dst_id = self.node_dict[dst_ip]
         return (src_id,dst_id)
 
+    def get_my_id(self):
+        return self.node_dict[self.ip_addr]
+
+    def process_ping(self):
+        self.send_ping()
+
+    def send_ping(self):
+        msgs = "Ping:"
+        for key in self.ping_info:
+            ping = self.ping_info[key]
+            (src_id,dst_id) = self.get_hosts_id(ping.src,ping.dst)
+            ping_value = ping.result
+            msg = str(src_id)+"|"+ str(dst_id) + "|" + str(ping_value) + ','
+            msgs += msg
+        msgs = msgs.rstrip(',')
+        print "Sending: " + msgs
+        self.socket.sendall(msgs)
+
+    def handle_new_ips(self,packet):
+        if packet.src == self.ip_addr:
+            dst = packet.dst
+        else:
+            dst = packet.src
+        if not (self.ip_addr,dst) in self.ping_info:
+            self.ping_info[self.ip_addr,dst] = ip_ping(self.ip_addr,dst)
+            self.ping_info[self.ip_addr,dst].start()
+
     def handle_packet(self,packet):
-        (src_id,dst_id) = self.get_hosts_id(packet)
-        if not (src_id,dst_id) in self.traffic_stat:
+        self.handle_new_ips(packet)
+        (src_id,dst_id) = self.get_hosts_id(packet.src,packet.dst)
+        if not (src_id,dst_id) in traffic_stat:
+            #self.process_ping(packet)
             nl = NetworkLoad()
             nl.inc(packet.length)
-            self.traffic_stat[(src_id,dst_id)] = nl
+            traffic_stat[(src_id,dst_id)] = nl
         else:
-            self.traffic_stat[(src_id,dst_id)].inc(packet.length)
+            traffic_stat[(src_id,dst_id)].inc(packet.length)
 
-    def process_bandwidth(self,capt_time):
-        print "Bandwidth Refresh"
-        system("clear")
-        for k in self.traffic_stat.keys():
-            bandwidth = self.traffic_stat[k] / (capt_time - self.start_time)
+    def process_bandwidth(self):
+        #os.system("clear")
+        #print "Process bandwidth: Len Keys: " + str(len(traffic_stat.keys()))
+        for k in traffic_stat.keys():
+            bandwidth = traffic_stat[k].count / self.refresh_time
             (src,dst) = k
-            self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id)
-            print "Src: " + src + " Dst: " + dst + " Bandwidth: " + bandwidth
+            #self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id)
+            traffic_stat[k].bandwidth = bandwidth
+            #latency = traffic_stat[k].ping
+            print "Src: " + str(src) + " Dst: " + str(dst) + " Bandwidth: " + str(bandwidth)
+        #sys.stdout.flush()
 
-    def process_traffic(self,capt_time,socket):
-        msgs = self.prepare_message()
-        socket.sendall(msgs)
-        self.bw_id += 1
-        self.start_time = capt_time
-        self.traffic_stat.clear()
-
-    def prepare_message(self):
-        msgs = ""
-        for link in self.traffic_stat.keys():
+    def send_traffic(self):
+        msgs = "Traffic:"
+        for link in traffic_stat.keys():
             (src_id,dst_id) = link
-            count = self.traffic_stat[link].count
-            msg = str(src_id) + '|' + str(dst_id) + '|' + count + ','
-            msgs.add(msg)
-        #msgs.rstrip(',') # delete last comma
-        return msgs
+            #count = traffic_stat[link].count
+            bandwidth = traffic_stat[link].bandwidth
+            msg = str(src_id) + '|' + str(dst_id) + '|' + str(bandwidth) + ','
+            msgs += msg
+        #print "Sending: " + msgs
+        msgs = msgs.rstrip(',') # delete last comma
+        self.socket.send(msgs)
+        self.bw_id += 1
+        traffic_stat.clear()
 
+
+    def refresh_send(self):
+        self.time_to_send = True
 
     def launch(self,hostname,server_port):
-        port = server_port
+        self.server_port = server_port
         #ipaddr = socket.gethostbyname(hostname)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((hostname, port))
+        self.socket = s
+        s.connect((hostname, self.server_port))
         print "Connected!"
         print "Listen on interface: " + self.interface
         cap = pcapy.open_live(self.interface,65536,1,0)
-
         self.start_time = clock()
+        rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
+        rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
         while (1) :
+            #sys.stdout.write("1")
             (header, packet) = cap.next()
+            #sys.stdout.write("2")
+            #sys.stdout.flush()
             capt_time = clock()
-            if capt_time - self.start_time > self.refresh_time:
-                self.process_bandwidth(capt_time)
-                self.process_traffic(capt_time,s)
-
             (src,dst,leng,res) = self.parse_packet(packet)
             if not res:
                continue
             pk = Packet(src,dst,leng)
-            self.handle_packet(packet)
-            msg = str(src) + '|' + str(dst) + '|' + str(leng) + ','
-            print "Sending: " + msg
-            #s.sendall(bytes(msg,'utf8'))
-            s.sendall(msg)
+            self.handle_packet(pk)
+
+            if self.time_to_send:
+                self.time_to_send = False
+                self.process_bandwidth()
+                self.send_traffic()
+
         s.close()
 
 class Packet:
@@ -190,7 +234,7 @@ class Packet:
     def __init__(self, src, dst, length):
         self.src = src
         self.dst = dst
-        self.len = length
+        self.length = length
 
 class NetworkLoad:
 
@@ -200,6 +244,8 @@ class NetworkLoad:
         self.metric_ind = 0
         self.error_ind = 0
         self.metrics = ['B', 'KB', 'MB', 'GB', 'TB']
+        self.bandwidth = 0
+        self.ping = -1
 
     def inc(self,leng):
         self.count += leng
@@ -209,6 +255,68 @@ class NetworkLoad:
             # error obtaining not significantly TO DO
             self.count /= 1024
             self.metric_ind += 1
+
+class RepeatedTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer     = None
+        self.interval   = interval
+        self.function   = function
+        self.args       = args
+        self.kwargs     = kwargs
+        self.is_running = False
+        self.start()
+
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
+
+    def start(self):
+        if not self.is_running:
+            self._timer = Timer(self.interval, self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
+
+
+class ip_ping(Thread):
+   def __init__ (self,src,dst):
+        Thread.__init__(self)
+        self.src = src
+        self.dst = dst
+        self.result = -1
+        self.repeat = 4
+        #self.__successful_pings = -1
+
+   def run(self):
+        while 1:
+            src = self.src
+            host = self.dst
+            host = host.split(':')[0]
+            #print "Ping launched"
+            cmd = "fping {host} -C 1 -q".format(host=host)
+            res = [float(x) for x in self.get_simple_cmd_output(cmd).strip().split(':')[-1].split() if x != '-']
+            if len(res) > 0:
+                result = sum(res) / len(res)
+            else:
+                result = 9999.0
+            #print "Result: " + str((src,host,result))
+            self.result = result
+            sleep(self.repeat)
+
+   def get_simple_cmd_output(self,cmd, stderr=STDOUT):
+        """
+        Execute a simple external command and get its output.
+        """
+        args = shlex.split(cmd)
+        return Popen(args, stdout=PIPE, stderr=stderr).communicate()[0]
+
+   def ready(self):
+       return self.result != -1
+
 
 client = ClientTraffic("eth0.800")
 client.launch("10.2.0.51",12345)

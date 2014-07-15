@@ -16,7 +16,7 @@ class TrafficServer:
 
     def __init__(self):
         self.start_time = 0
-        self.refresh_time = 2
+        self.refresh_time = 3
         self.bw_id = 0
         self.traffic_stat = dict()
 
@@ -59,79 +59,102 @@ class TrafficServer:
 
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
+
     def handle(self):
         self.hostname = self.request.getsockname()[0]
+        self.client_ip = self.request.getpeername()[0]
         traffic_server = self.server.traffic
-        print 'Connected: ' + str(self.request.getsockname())
+        print 'Connected: ' + str(self.client_ip)
         while True:
-            capt_time = time.clock()
-            """
-            if capt_time - traffic_server.start_time > traffic_server.refresh_time:
-                self.process_bandwidth(capt_time)
-                traffic_server.bw_id += 1
-                traffic_server.start_time = capt_time
-                traffic_server.traffic_stat.clear()
-            """
             data = self.get_data()
-            if len(data) < 5:
+            if len(data) < 3:
                 continue
+            capt_time = time.clock()
             self.handle_data(data)
 
     def handle_data(self,data):
-        for data_chunk in data:
-            traffic_records = data_chunk.split(',')
-            traffic_server = self.server.traffic
-            for i in range(0,len(traffic_records)):
-                traf = traffic_records[i]
-                split_data = traf.split('|')
-                (src_id,dst_id,leng) = self.get_packet_info(split_data)
-                #   pk = Packet(src,dst,leng)
-                #	print "Packet handled: Src: " + src + " Dst: " + dst + " Length: " + leng
-                if (src_id,dst_id) not in traffic_server.traffic_stat:
-                    traffic_server.traffic_stat[(src_id,dst_id)] = 0
-                traffic_server.traffic_stat[(src_id,dst_id)] += int(leng)
-                """
-                if len(split_data) < 3:
-                    remains_data = True
-                    traffic_server[self.hostname] = remains_data
-                else:
+        if data.startswith("Ping:"):
+            self.process_ping(data)
+        elif data.startswith("Traffic:"):
+            self.process_traffic(data)
 
-                """
-    def get_packet_info(self,split_data):
+
+            """
+            if len(split_data) < 3:
+                remains_data = True
+                traffic_server[self.hostname] = remains_data
+            else:
+
+            """
+    def process_traffic(self,data):
+        data = data.lstrip("Traffic:")
+        traffic_records = data.split(',')
+        for traffic_record in traffic_records:
+            if traffic_record == '':
+                continue
+            traffic_server = self.server.traffic
+            split_data = traffic_record.split('|')
+            (src_id,dst_id,traf) = self.get_traffic_info(split_data)
+            #print "Traffic split data: " + str(split_data)
+            print "Recieved traffic: " + str((src_id,dst_id,traf))
+            #traffic_server.bw_hist.append((src_id,dst_id),traf,traffic_server.bw_id)
+
+    def process_ping(self,data):
+        data = data.lstrip("Ping:")
+        traffic_records = data.split(',')
+        for traffic_record in traffic_records:
+            if traffic_record == '':
+                continue
+            traffic_server = self.server.traffic
+            split_data = traffic_record.split('|')
+            (src_id,dst_id,ping) = self.get_ping_info(split_data)
+            print "Recieved ping: " + str((src_id,dst_id,ping))
+            #traffic_server.bw_hist.append((src_id,dst_id),bw,traffic_server.bw_id)
+
+    def get_node_ids(self,split_data):
         traffic_server = self.server.traffic
-        src = split_data[0]
-        if src not in traffic_server.node_dict:
+        src_id = int(split_data[0])
+        dst_id = int(split_data[1])
+        # Client already resolved the ips
+        """if src not in traffic_server.node_dict:
             src_id = traffic_server.router_id
         else:
-            src_id = traffic_server.node_dict[src]
-
+            src_id = int(src)
         dst = split_data[1]
         if dst not in traffic_server.node_dict:
             dst_id = traffic_server.router_id
         else:
-            dst_id = traffic_server.node_dict[dst]
+            dst_id = int(dst)
+        """
+        return (src_id,dst_id)
 
-        leng = split_data[2]
-
+    def get_traffic_info(self,split_data):
+        (src_id,dst_id) = self.get_node_ids(split_data)
+        leng = float(split_data[2])
         return (src_id,dst_id,leng)
+
+    def get_ping_info(self,split_data):
+        (src_id,dst_id) = self.get_node_ids(split_data)
+        ping = float(split_data[2])
+        return (src_id,dst_id,ping)
 
     def process_bandwidth(self,capt_time):
         traffic_server = self.server.traffic
         print "Bandwidth Refresh"
-        os.system("clear")
+        #os.system("clear")
         for k in traffic_server.traffic_stat.keys():
-            bandwidth = traffic_server.traffic_stat[k] / (capt_time - traffic_server.start_time)
+            #bandwidth = traffic_server.traffic_stat[k] / (capt_time - traffic_server.start_time)
             (src,dst) = k
-            traffic_server.bw_hist.append((src,dst),bandwidth,capt_time,traffic_server.bw_id)
-            print "Src: " + src + " Dst: " + dst + " Bandwidth: " + bandwidth
-		 	
+            traffic_server.bw_hist.append((src,dst),traffic_server.traffic_stat[k].bandwidth,capt_time,traffic_server.bw_id)
+            print "Src: " + src + " Dst: " + dst + " Bandwidth: " + traffic_server.traffic_stat[k].bandwidth
+
 
     def get_data(self):
         data = ""
-        while self.request.recv != 0:
-
-            data.append(self.request.recv(2048))
-        print("{}: data accepted: {}".format(self.hostname, data))
+        #while self.request.recv != 0:
+	#    print "Recieved!"
+        data += self.request.recv(1024)
+        print("{}: data accepted: {}".format(self.client_ip, data))
         return data
 
 

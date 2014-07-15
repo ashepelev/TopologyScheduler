@@ -83,7 +83,7 @@ class EdgeInfo:
     Class describes the portion of traffic information for the bw_id period
     """
 
-    def __init__(self,value,time,bw_id):
+    def __init__(self,value,bw_id):
         self.value = value
-        self.time = time
+        #self.time = time
         self.bw_id = bw_id
