@@ -8,7 +8,15 @@ import YamlDoc
 import BandwidthHistory
 import Node
 import os
-
+from nova.openstack.common.context import RequestContext
+from nova import context
+from nova import db
+from keystoneclient.v2_0 import Client
+from keystoneclient import session
+import novaclient.v1_1.client as NovaClient
+from oslo.config import cfg
+from keystoneclient import access
+from keystoneclient import httpclient
 
 
 
@@ -56,6 +64,112 @@ class TrafficServer:
             if isinstance(x,Node.Router):
                 return x.id
         print "No router found"
+
+    def get_context(self):
+        """
+        c = Client(username='admin',
+                          password='stackpass',
+                          tenant_name='admin',
+                          auth_url='http://10.2.0.51:5000/v2.0/')
+
+        token = c.get_raw_token_from_identity_service(username='admin',
+                          password='stackpass',
+                          tenant_name='admin',
+                          auth_url='http://10.2.0.51:5000/v2.0/')
+
+
+        print auth_ref.auth_token
+        """
+        httpci
+
+        """
+
+
+        token = c.get_raw_token_from_identity_service(auth_url=os.getenv('OS_AUTH_URL'),
+                                                            username=os.getenv('OS_USERNAME'),
+                                                            password=os.getenv('OS_PASSWORD'),
+                                                            tenant_name=os.getenv('OS_TENANT_NAME')
+                                                            )
+
+        #print c.auth_token
+
+        keystone = Client(auth_url=os.getenv('OS_AUTH_URL'),
+                         username=os.getenv('OS_USERNAME'),
+                            password=os.getenv('OS_PASSWORD'),
+                            tenant_name=os.getenv('OS_TENANT_NAME'))
+        print keystone.auth_token
+
+        token = kClient.get_raw_token_from_identity_service(auth_url=os.getenv('OS_AUTH_URL'),
+                                                            username=os.getenv('OS_USERNAME'),
+                                                            password=os.getenv('OS_PASSWORD'),
+                                                            tenant_name=os.getenv('OS_TENANT_NAME')
+                                                            )
+        #
+
+        keystone = Client(auth_url=os.getenv('OS_AUTH_URL'),
+                                                            username=os.getenv('OS_USERNAME'),
+                                                            password=os.getenv('OS_PASSWORD'),
+                                                            tenant_name=os.getenv('OS_TENANT_NAME')
+                        )
+
+        token = token.get_raw_token_from_identity_service(auth_url=os.getenv('OS_AUTH_URL'),
+                                                            username=os.getenv('OS_USERNAME'),
+                                                            password=os.getenv('OS_PASSWORD'),
+                                                            tenant_name=os.getenv('OS_TENANT_NAME'))
+        print token
+
+
+
+
+        connection_opts = [
+            cfg.StrOpt('slave_connection',
+                       secret=True,
+                       help='The SQLAlchemy connection string used to connect to the '
+                            'slave database'),
+        ]
+        auth = v2.Password(auth_url=os.getenv('OS_AUTH_URL'),
+                           username=os.getenv('OS_USERNAME'),
+                           password=os.getenv('OS_PASSWORD'),
+                           tenant_name=os.getenv('OS_TENANT_NAME'))
+        sess = session.Session(auth=auth)
+        #nclient = NovaClient.Client(session=sess)
+        nclient.authenticate()
+        """
+
+
+        """
+        CONF = cfg.CONF
+        CONF.register_opts(connection_opts, group='database')
+        CONF.import_opt('compute_topic', 'nova.compute.rpcapi')
+        CONF.import_opt('connection',
+                        'nova.openstack.common.db.options',
+                        group='database')
+
+        #print CONF.database.connection
+
+        ctxt = RequestContext(auth_token=c.auth_token,
+                              user=c.username,
+                              tenant=c.tenant_name,
+                              is_admin=True)
+
+
+
+        keystone = Client(auth_url=os.getenv('OS_AUTH_URL'),
+                        username=os.getenv('OS_USERNAME'),
+                        password=os.getenv('OS_PASSWORD'),
+                        tenant_name=os.getenv('OS_TENANT_NAME')
+                        )
+
+        """
+        #ctxt = RequestContext("admin","admin",is_admin=True)
+        #print ctxt.to_dict()
+        #nclient.authenticate()
+        #print nclient.images.list()
+        #ctxt = context.get_admin_context()
+        #print ctxt.user_id
+        #print ctxt.user_name
+        #compute_nodes = db.compute_node_get_all(ctxt)
+        #print compute_nodes
 
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
@@ -165,4 +279,5 @@ class MyThreadedTCPServer(SocketServer.ThreadingMixIn,
 #if __name__ =="__main__":
 ts = TrafficServer()
 ts.get_topology()
-ts.launch(12345)
+ts.get_context()
+#ts.launch(12345)

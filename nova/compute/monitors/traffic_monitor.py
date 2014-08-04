@@ -13,27 +13,50 @@ import shlex
 from subprocess import Popen, PIPE, STDOUT
 from threading import Timer
 from threading import Thread
-import re
-import Queue
+import os
+
+from nova.conductor import api as conductor_api
+from nova import context
+from nova.openstack.common import timeutils
+from eventlet import greenthread
+from nova import conductor
+
+
 
 traffic_stat = dict()
 
 
-class ClientTraffic:
+class ClientTraffic(Thread):
 
-    def __init__(self,sniff_int):
-        #self.get_topology_nodes()
-        #self.node_dict = self.get_node_dict()
-        #self.router_id = self.get_router_id()
+    def __init__(self,sniff_int,conductor,log,topology_desc_path):
+        Thread.__init__(self)
+        self.daemon = True
+        self.topology_desc_path = topology_desc_path
+        self.get_topology_nodes()
+        self.node_dict = self.get_node_dict()
+        self.router_id = self.get_router_id()
         self.interface = sniff_int
-        #self.ip_addr = self.get_ip_address(sniff_int)
+        self.ip_addr = self.get_ip_address(sniff_int)
 
         self.bw_id = -1
-        self.refresh_time = 2
-        #self.my_id = self.get_my_id()
+        self.refresh_time = 1
+        self.my_id = self.get_my_id()
         self.time_to_send = False
 
         self.ping_info = dict()
+        self.log = log
+        self.conductor = conductor_api.API()
+
+        #greenthread.spawn(self.launch)
+
+        #print "Client initiated"
+
+    def run(self):
+        #print "Try to launch"
+        #thread = Thread(target=self.launch())
+        #thread.daemon = True
+        #thread.start()
+        self.launch()
 
     def eth_addr (a) :
         b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
@@ -96,7 +119,7 @@ class ClientTraffic:
         return (0,0,0,False)
 
     def get_topology_nodes(self):
-        yd = YamlDoc.YamlDoc('current-topology/nodes.yaml','current-topology/edges.yaml')
+        yd = YamlDoc.YamlDoc(self.topology_desc_path + 'nodes.yaml',self.topology_desc_path +  'edges.yaml')
         self.node_list = yd.node_list
 
     def get_node_dict(self):
@@ -139,7 +162,7 @@ class ClientTraffic:
             msg = str(src_id)+"|"+ str(dst_id) + "|" + str(ping_value) + ','
             msgs += msg
         msgs = msgs.rstrip(',')
-        print "Sending: " + msgs
+        #print "Sending: " + msgs
         #self.socket.sendall(msgs)
 
     def handle_new_ips(self,packet):
@@ -171,111 +194,80 @@ class ClientTraffic:
             #self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id)
             traffic_stat[k].bandwidth = bandwidth
             #latency = traffic_stat[k].ping
-            print "Src: " + str(src) + " Dst: " + str(dst) + " Bandwidth: " + str(bandwidth)
+            #print "Src: " + str(src) + " Dst: " + str(dst) + " Bandwidth: " + str(bandwidth)
         #sys.stdout.flush()
 
     def send_traffic(self):
         msgs = "Traffic:"
-        print "Sending traffic"
+        self.log.debug("Sending...")
         for link in traffic_stat.keys():
             (src_id,dst_id) = link
             #count = traffic_stat[link].count
             bandwidth = traffic_stat[link].bandwidth
-            msg = str(src_id) + '|' + str(dst_id) + '|' + str(bandwidth) + ','
-            msgs += msg
+            resources = {}
+            resources['src'] = src_id
+            resources['dst'] = dst_id
+            resources['bytes'] = bandwidth
+            resources['time'] = timeutils.utcnow()
+            #msg = str(src_id) + '|' + str(dst_id) + '|' + str(bandwidth) + ','
+            #msgs += msg
+            self.log.debug("Send to conductor")
+            self.conductor.traffic_add(self.context, resources)
         #print "Sending: " + msgs
         msgs = msgs.rstrip(',') # delete last comma
-        self.socket.send(msgs)
+        #conductor.traffic_add(self.context,)
+        #self.socket.send(msgs)
         self.bw_id += 1
         traffic_stat.clear()
 
 
+
     def refresh_send(self):
         self.time_to_send = True
+        self.log.debug("Settted")
+        self.process_bandwidth()
+        self.send_traffic()
 
-    def launch(self,hostname,server_port):
-        self.server_port = server_port
+    #def launch(self,hostname,server_port):
+    def launch(self):
+        #print "Launched!"
+        #self.server_port = server_port
         #ipaddr = socket.gethostbyname(hostname)
         #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.socket = s
         #s.connect((hostname, self.server_port))
-        print "Connected!"
-        print "Listen on interface: " + self.interface
-        #cap = pcapy.open_live(self.interface,65536,1,0)
+        self.log.debug("LAUNCHED")
+        self.context = context.get_admin_context()
+        #print "Connected!"
+        #print "Listen on interface: " + self.interface
         cap = pcapy.open_live(self.interface,65536,1,0)
-        #rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
-        data = Queue.Queue()
-        #tcp = my_tcpdump("eth0",data)
-        #tcp.start()
         self.start_time = time()
-        #
+        #rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
         #rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
+        #greenthread.sleep(0)
         while (1) :
             #sys.stdout.write("1")
             (header, packet) = cap.next()
-            #sys.stdout.write("2")
+            #sys.stdout.write("1")
             #sys.stdout.flush()
             #capt_time = clock()
             (src,dst,leng,res) = self.parse_packet(packet)
             if not res:
-               continue
-            pk = Packet(src,dst,leng)
-            print "Captured " + src + " " + dst + " " + str(leng)
-
-            #self.handle_packet(pk)
-            print time()
-            print self.start_time
-            if time() - self.start_time > self.refresh_time:
-                self.start_time = time()
-                print "Clock!"
-                #self.time_to_send = False
-                #self.process_bandwidth()
-                #self.send_traffic()
-
-
-
-        return
-
-        cmd = "tcpdump -n -nn -l -i eth0"
-        args = shlex.split(cmd)
-        # Here STP & ARP calls are not included
-        p = re.compile(r'.*IP.(?P<src>[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)\..*>.'
-                       r'(?P<dst>[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)\..*'
-                       r'(length.(?P<len>[0-9]*)|\((?P<len2>[0-9]*)\))$')
-        proc = Popen(args, stdout=PIPE, stderr=STDOUT)
-
-        while (1):
-            for line in iter(proc.stdout.readline,''):
-                m = p.match(line)
-                if not m:
-                    continue
-                if m.group('len') == None:
-                    len = m.group('len2')
-                else:
-                    len = m.group('len')
-                pd = (m.group('src'),m.group('dst'),len)
-
-                if not pd:
-                    #print "BAD LINE: " + line
-                    continue
-                else:
-                    #print "Data put"
-                    print pd
-
-        print "CYCLE START"
-
-        while (1):
-            if not data.empty():
-                item = data.get()
-            else:
+                #print "Not res"
                 continue
+            pk = Packet(src,dst,leng)
+            #print "Captured packet. Src: " + str(src) + " Dst: " + str(dst) + " Length: " + str(leng)
+            self.handle_packet(pk)
+            if time() - self.start_time > self.refresh_time:
+                sleep(0.01)
+                self.start_time = time()
+                #print "Clock!"
+                #self.log.debug("!!!!!!!!!!!!TIMER_READY!!!!!!!!!!!!!!!!")
+                self.time_to_send = False
+                self.process_bandwidth()
+                self.send_traffic()
 
-        return
-
-
-        #self.start_time = clock()
-        #rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
-        #rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
+        #s.close()
 
 class Packet:
     """
@@ -326,45 +318,11 @@ class RepeatedTimer(object):
         if not self.is_running:
             self._timer = Timer(self.interval, self._run)
             self._timer.start()
-            print "Timer Started"
             self.is_running = True
 
     def stop(self):
         self._timer.cancel()
         self.is_running = False
-
-class my_tcpdump(Thread):
-    def __init__(self,int,data):
-        Thread.__init__(self)
-        self.int = int
-        self.data = data
-
-    def run(self):
-        cmd = "tcpdump -n -nn -l -i " + self.int
-        args = shlex.split(cmd)
-        # Here STP & ARP calls are not included
-        p = re.compile(r'.*IP.(?P<src>[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)\..*>.'
-                       r'(?P<dst>[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)\..*'
-                       r'(length.(?P<len>[0-9]*)|\((?P<len2>[0-9]*)\))$')
-        proc = Popen(args, stdout=PIPE, stderr=STDOUT)
-        for line in iter(proc.stdout.readline,''):
-            pd = self.parse_output(line,p)
-            if not pd:
-                #print "BAD LINE: " + line
-                continue
-            else:
-                #print "Data put"
-                self.data.put(pd)
-
-    def parse_output(self,line,regexp):
-        m = regexp.search(line)
-        if not m:
-            return False
-        if m.group('len') == None:
-            len = m.group('len2')
-        else:
-            len = m.group('len')
-        return (line, m.group('src'),m.group('dst'),len)
 
 
 class ip_ping(Thread):
@@ -401,7 +359,3 @@ class ip_ping(Thread):
 
    def ready(self):
        return self.result != -1
-
-
-client = ClientTraffic("eth0")
-client.launch("10.2.0.51",12345)
