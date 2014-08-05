@@ -89,7 +89,7 @@ from nova.virt import storage_users
 from nova.virt import virtapi
 from nova import volume
 from nova.volume import encryptors
-from nova.compute.monitors import traffic_monitor
+#from nova.compute.monitors import traffic_monitor
 
 
 
@@ -599,10 +599,10 @@ class ComputeManager(manager.Manager):
         self.use_legacy_block_device_info = \
                             self.driver.need_legacy_block_device_info
 
-        self.run_traffic_monitor()
+        #self.run_traffic_monitor()
 
     def run_traffic_monitor(self):
-        client = traffic_monitor.ClientTraffic("eth0.800",self.conductor_api,LOG,'/opt/stack/TopologyScheduler/current-topology/')
+        client = traffic_monitor.ClientTraffic("eth0.800",LOG,'/opt/stack/TopologyScheduler/current-topology/')
         client.start()
 
 

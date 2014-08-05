@@ -57,22 +57,21 @@ class TrafficInfo(BASE, NovaBase):
 
     __tablename__ = 'traffic_info'
     __table_args__= ()
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True,nullable=False)
     src = Column(Integer) # id of the node
     dst = Column(Integer) # id of the node
-    bytes = Column(Float)
-    time = Column(DateTime)
+    bytes = Column(Integer)
+    m_id = Column(Integer)
 
 class PingInfo(BASE, NovaBase):
     """ Aggregates the information about latency between nodes, """
 
     __tablename__ = 'ping_info'
     __table_args__= ()
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True,nullable=False)
     src = Column(Integer) # id of the node
     dst = Column(Integer) # id of the node
     latency = Column(Float)
-    time = Column(DateTime)
 
 class Service(BASE, NovaBase):
     """Represents a running service on a host."""

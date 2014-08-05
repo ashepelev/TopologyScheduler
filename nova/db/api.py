@@ -134,6 +134,12 @@ def traffic_get(context):
 def traffic_add(context,values):
     return IMPL.traffic_add(context,values)
 
+def ping_get(context):
+    return IMPL.ping_get(context)
+
+def ping_add(context,values):
+    return IMPL.ping_add(context,values)
+
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)

@@ -423,10 +423,10 @@ def traffic_get(context):
     return _traffic_get(context)
 
 def _traffic_add(context,values):
+    datetime_keys = ('created_at', 'deleted_at', 'updated_at')
+    convert_objects_related_datetimes(values, *datetime_keys)
     traffic_ref = models.TrafficInfo()
-    LOG.debug("SQLALCHEMY: Got the values: " + str(values['src']))
-    for (key,value) in values.iteritems():
-        traffic_ref[key] = value
+    traffic_ref.update(values)
     traffic_ref.save()
     return traffic_ref
 
@@ -450,9 +450,10 @@ def _ping_get(context):
     return result
 
 def _ping_add(context,values):
+    datetime_keys = ('created_at', 'deleted_at', 'updated_at')
+    convert_objects_related_datetimes(values, *datetime_keys)
     ping_ref = models.PingInfo()
-    for (key,value) in values.iteritems():
-        ping_ref[key] = value
+    ping_ref.update(values)
     ping_ref.save()
     return ping_ref
 

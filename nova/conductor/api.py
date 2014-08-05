@@ -62,7 +62,6 @@ class LocalAPI(object):
         pass
 
     def traffic_add(self,context,values):
-        #LOG.debug("Got the values: " + str(values['src']))
         return self._manager.traffic_add(context,values)
 
     def ping_add(self,context,values):

@@ -20,15 +20,16 @@ from nova import context
 from nova.openstack.common import timeutils
 from eventlet import greenthread
 from nova import conductor
-
+from nova.openstack.common import log as logging
 
 
 traffic_stat = dict()
+LOG = logging.getLogger("nova-compute")
 
 
 class ClientTraffic(Thread):
 
-    def __init__(self,sniff_int,conductor,log,topology_desc_path):
+    def __init__(self,sniff_int,log,topology_desc_path):
         Thread.__init__(self)
         self.daemon = True
         self.topology_desc_path = topology_desc_path
@@ -38,14 +39,16 @@ class ClientTraffic(Thread):
         self.interface = sniff_int
         self.ip_addr = self.get_ip_address(sniff_int)
 
-        self.bw_id = -1
-        self.refresh_time = 1
+        self.bw_id = 0
+        self.refresh_time = 2
         self.my_id = self.get_my_id()
         self.time_to_send = False
 
         self.ping_info = dict()
         self.log = log
         self.conductor = conductor_api.API()
+
+        self.router_ip = self.get_router_ip()
 
         #greenthread.spawn(self.launch)
 
@@ -135,6 +138,12 @@ class ClientTraffic(Thread):
                 return x.id
         print "No router found"
 
+    def get_router_ip(self):
+        for x in self.node_list:
+            if isinstance(x,Node.Router):
+                return x.ip_addr
+        return False
+
     def get_hosts_id(self,src_ip,dst_ip):
         #traffic_server = self.server.traffic
         if src_ip not in self.node_dict:
@@ -154,14 +163,20 @@ class ClientTraffic(Thread):
         self.send_ping()
 
     def send_ping(self):
-        msgs = "Ping:"
+        #msgs = "Ping:"
+        self.log.debug("Sending ping")
         for key in self.ping_info:
             ping = self.ping_info[key]
             (src_id,dst_id) = self.get_hosts_id(ping.src,ping.dst)
             ping_value = ping.result
-            msg = str(src_id)+"|"+ str(dst_id) + "|" + str(ping_value) + ','
-            msgs += msg
-        msgs = msgs.rstrip(',')
+            resources = {}
+            resources['src'] = src_id
+            resources['dst'] = dst_id
+            resources['latency'] = ping_value
+            self.conductor.ping_add(self.context,resources)
+            #msg = str(src_id)+"|"+ str(dst_id) + "|" + str(ping_value) + ','
+            #msgs += msg
+        #msgs = msgs.rstrip(',')
         #print "Sending: " + msgs
         #self.socket.sendall(msgs)
 
@@ -170,6 +185,8 @@ class ClientTraffic(Thread):
             dst = packet.dst
         else:
             dst = packet.src
+        if dst not in self.node_dict:
+            dst = self.router_ip
         if not (self.ip_addr,dst) in self.ping_info:
             self.ping_info[self.ip_addr,dst] = ip_ping(self.ip_addr,dst)
             self.ping_info[self.ip_addr,dst].start()
@@ -198,8 +215,8 @@ class ClientTraffic(Thread):
         #sys.stdout.flush()
 
     def send_traffic(self):
-        msgs = "Traffic:"
-        self.log.debug("Sending...")
+        #msgs = "Traffic:"
+        #self.log.debug("Sending...")
         for link in traffic_stat.keys():
             (src_id,dst_id) = link
             #count = traffic_stat[link].count
@@ -208,13 +225,13 @@ class ClientTraffic(Thread):
             resources['src'] = src_id
             resources['dst'] = dst_id
             resources['bytes'] = bandwidth
-            resources['time'] = timeutils.utcnow()
+            resources['m_id'] = self.bw_id
             #msg = str(src_id) + '|' + str(dst_id) + '|' + str(bandwidth) + ','
             #msgs += msg
-            self.log.debug("Send to conductor")
+            #self.log.debug("Send to conductor")
             self.conductor.traffic_add(self.context, resources)
         #print "Sending: " + msgs
-        msgs = msgs.rstrip(',') # delete last comma
+        #msgs = msgs.rstrip(',') # delete last comma
         #conductor.traffic_add(self.context,)
         #self.socket.send(msgs)
         self.bw_id += 1
@@ -236,14 +253,14 @@ class ClientTraffic(Thread):
         #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.socket = s
         #s.connect((hostname, self.server_port))
-        self.log.debug("LAUNCHED")
+        #self.log.debug("LAUNCHED")
         self.context = context.get_admin_context()
         #print "Connected!"
         #print "Listen on interface: " + self.interface
         cap = pcapy.open_live(self.interface,65536,1,0)
         self.start_time = time()
         #rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
-        #rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
+        rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
         #greenthread.sleep(0)
         while (1) :
             #sys.stdout.write("1")
@@ -340,6 +357,7 @@ class ip_ping(Thread):
             host = self.dst
             host = host.split(':')[0]
             #print "Ping launched"
+            LOG.debug('Launching ping')
             cmd = "fping {host} -C 1 -q".format(host=host)
             res = [float(x) for x in self.get_simple_cmd_output(cmd).strip().split(':')[-1].split() if x != '-']
             if len(res) > 0:
@@ -359,3 +377,7 @@ class ip_ping(Thread):
 
    def ready(self):
        return self.result != -1
+
+#conductor_api = conductor.API()
+client = ClientTraffic("eth0.800",LOG,'/opt/stack/TopologyScheduler/current-topology/')
+client.start()

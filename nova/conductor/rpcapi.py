@@ -181,6 +181,12 @@ class ConductorAPI(object):
         return cctxt.call(context, 'traffic_add',
                           values=values)
 
+    def ping_add(self,context,values):
+        cctxt = self.client.prepare()
+        return cctxt.call(context, 'ping_add',
+                          values=values)
+
+
     def migration_get_in_progress_by_host_and_node(self, context,
                                                    host, node):
         cctxt = self.client.prepare()

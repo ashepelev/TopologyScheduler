@@ -134,10 +134,9 @@ class ConductorManager(manager.Manager):
 
     def traffic_add(self,context,values):
         jsonutils.to_primitive(self.db.traffic_add(context,values))
-        LOG.debug("CONDUCTOR: Got values " + str(values))
 
     def ping_add(self,context,values):
-        return self.db.ping_add(context,values)
+        jsonutils.to_primitive(self.db.ping_add(context,values))
 
     @messaging.expected_exceptions(exception.InstanceNotFound)
     def instance_get_by_uuid(self, context, instance_uuid,
