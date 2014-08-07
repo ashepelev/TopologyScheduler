@@ -1,25 +1,20 @@
+from nova.scheduler.weights.TopologyWeigher import YamlDoc, Node
+
 __author__ = 'ash'
 
 import socket
 import fcntl
 from struct import *
 import pcapy
-import YamlDoc
-import Node
-from time import clock
 from time import sleep
 from time import time
 import shlex
 from subprocess import Popen, PIPE, STDOUT
 from threading import Timer
 from threading import Thread
-import os
 
 from nova.conductor import api as conductor_api
 from nova import context
-from nova.openstack.common import timeutils
-from eventlet import greenthread
-from nova import conductor
 from nova.openstack.common import log as logging
 
 
@@ -40,7 +35,7 @@ class ClientTraffic(Thread):
         self.ip_addr = self.get_ip_address(sniff_int)
 
         self.bw_id = 0
-        self.refresh_time = 2
+        self.refresh_time = 10
         self.my_id = self.get_my_id()
         self.time_to_send = False
 
@@ -128,19 +123,19 @@ class ClientTraffic(Thread):
     def get_node_dict(self):
         node_dict = dict()
         for x in self.node_list:
-            if not isinstance(x,Node.Switch):
+            if not isinstance(x, Node.Switch):
                 node_dict[x.ip_addr] = x.id
         return node_dict
 
     def get_router_id(self):
         for x in self.node_list:
-            if isinstance(x,Node.Router):
+            if isinstance(x, Node.Router):
                 return x.id
         print "No router found"
 
     def get_router_ip(self):
         for x in self.node_list:
-            if isinstance(x,Node.Router):
+            if isinstance(x, Node.Router):
                 return x.ip_addr
         return False
 

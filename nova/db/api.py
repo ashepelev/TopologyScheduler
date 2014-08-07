@@ -131,6 +131,9 @@ def not_equal(*values):
 def traffic_get(context):
     return IMPL.traffic_get(context)
 
+def traffic_get_avg(context,time):
+    return IMPL.traffic_get_avg(context,time)
+
 def traffic_add(context,values):
     return IMPL.traffic_add(context,values)
 

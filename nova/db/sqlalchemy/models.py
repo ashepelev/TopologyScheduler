@@ -57,6 +57,7 @@ class TrafficInfo(BASE, NovaBase):
 
     __tablename__ = 'traffic_info'
     __table_args__= ()
+    created_at = Column(DateTime)
     id = Column(Integer, primary_key=True,nullable=False)
     src = Column(Integer) # id of the node
     dst = Column(Integer) # id of the node

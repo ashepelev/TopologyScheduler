@@ -2,14 +2,7 @@ __author__ = 'ash'
 
 import networkx as nx
 import matplotlib.pyplot as plt
-from sets import Set
-import Node
-from Node import Switch
-from Node import Router
-from Node import ComputeNode
-from Node import CloudController
-import random
-import Edge
+
 
 class GraphDrawer:
 

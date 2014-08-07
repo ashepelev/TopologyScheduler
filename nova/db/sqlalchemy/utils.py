@@ -133,3 +133,10 @@ def create_shadow_table(migrate_engine, table_name=None, table=None,
     except Exception:
         LOG.info(repr(shadow_table))
         LOG.exception(_('Exception while creating table.'))
+
+class Traffic:
+
+    def __init__(self,src,dst,value):
+        self.src = src
+        self.dst = dst
+        self.value = value

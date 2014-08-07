@@ -1,0 +1,13 @@
+ - !!python/object:nova.scheduler.weights.TopologyWeigher.Node.Switch
+   id: 0
+ - !!python/object:nova.scheduler.weights.TopologyWeigher.Node.ComputeNode
+   hostname: os1
+   ip_addr: 10.2.0.51
+   id: 1
+ - !!python/object:nova.scheduler.weights.TopologyWeigher.Node.ComputeNode
+   hostname: os2
+   ip_addr: 10.2.0.52
+   id: 2
+ - !!python/object:nova.scheduler.weights.TopologyWeigher.Node.Router
+   ip_addr: 10.2.0.1
+   id: 3

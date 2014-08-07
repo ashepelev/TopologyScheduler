@@ -1,14 +1,12 @@
+from nova.scheduler.weights.TopologyWeigher import YamlDoc, Node
+
 __author__ = 'ash'
 
 import socket
 import fcntl
 from struct import *
-import datetime
 import pcapy
 import sys
-import YamlDoc
-import Node
-from math import pow
 from time import clock
 from os import system
 import shlex
@@ -123,13 +121,13 @@ def get_topology_nodes(self):
 def get_node_dict(self):
     node_dict = dict()
     for x in self.node_list:
-        if not isinstance(x,Node.Switch):
+        if not isinstance(x, Node.Switch):
             node_dict[x.ip_addr] = x.id
     return node_dict
 
 def get_router_id(self):
     for x in self.node_list:
-        if isinstance(x,Node.Router):
+        if isinstance(x, Node.Router):
             return x.id
     print "No router found"
 

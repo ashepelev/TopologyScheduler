@@ -1,15 +1,13 @@
+from nova.scheduler.weights.TopologyWeigher import BandwidthHistory
+
 __author__ = 'ash'
 
 
 import yaml
 
 import GraphDrawer
-import Edge
-import State
-import Scheduler
 
 import TrafficGen
-import BandwidthHistory
 
 stream_nodes = file('topology-examples/nodes1.yaml','r')
 #print yaml.load(stream)

@@ -422,6 +422,22 @@ def _traffic_get(context):
 def traffic_get(context):
     return _traffic_get(context)
 
+# time in seconds
+def traffic_get_avg(context,time):
+    window = timeutils.utcnow() - datetime.timedelta(seconds=time)
+    result = model_query(context,func.avg(models.TrafficInfo.bytes).label("avg"),
+                        models.TrafficInfo.src,
+                        models.TrafficInfo.dst,
+                        base_model=models.TrafficInfo).\
+                        filter(models.TrafficInfo.created_at > window).\
+                        group_by(models.TrafficInfo.src,models.TrafficInfo.dst).\
+                        all()
+
+    #fields = ('src', 'dst', 'avg')
+    #return dict((field, int(result[idx] or 0))
+    #            for idx, field in enumerate(fields))
+    return result
+
 def _traffic_add(context,values):
     datetime_keys = ('created_at', 'deleted_at', 'updated_at')
     convert_objects_related_datetimes(values, *datetime_keys)

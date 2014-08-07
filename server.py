@@ -1,23 +1,11 @@
+from nova.scheduler.weights.TopologyWeigher import BandwidthHistory, YamlDoc, Node
+
 __author__ = 'ash'
 
 #import socket
 import threading
 import time
 import SocketServer
-import YamlDoc
-import BandwidthHistory
-import Node
-import os
-from nova.openstack.common.context import RequestContext
-from nova import context
-from nova import db
-from keystoneclient.v2_0 import Client
-from keystoneclient import session
-import novaclient.v1_1.client as NovaClient
-from oslo.config import cfg
-from keystoneclient import access
-from keystoneclient import httpclient
-
 
 
 class TrafficServer:
@@ -55,13 +43,13 @@ class TrafficServer:
     def get_node_dict(self):
         node_dict = dict()
         for x in self.node_list:
-            if not isinstance(x,Node.Switch):
+            if not isinstance(x, Node.Switch):
                 node_dict[x.ip_addr] = x.id
         return node_dict
 
     def get_router_id(self):
         for x in self.node_list:
-            if isinstance(x,Node.Router):
+            if isinstance(x, Node.Router):
                 return x.id
         print "No router found"
 

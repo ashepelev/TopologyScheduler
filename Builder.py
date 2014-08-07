@@ -1,10 +1,11 @@
+from nova.scheduler.weights.TopologyWeigher import Node
+
 __author__ = 'ash'
 
-import Node
-from Node import Switch
-from Node import Router
-from Node import ComputeNode
-from Node import CloudController
+from nova.scheduler.weights.TopologyWeigher.Node import Switch
+from nova.scheduler.weights.TopologyWeigher.Node import Router
+from nova.scheduler.weights.TopologyWeigher.Node import ComputeNode
+from nova.scheduler.weights.TopologyWeigher.Node import CloudController
 
 import sys
 
