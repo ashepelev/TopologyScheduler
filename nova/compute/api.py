@@ -693,7 +693,7 @@ class API(base.Base):
                                          requested_networks, config_drive,
                                          block_device_mapping,
                                          auto_disk_config, reservation_id,
-                                         max_count):
+                                         max_count,topology_priority):
         """Verify all the input parameters regardless of the provisioning
         strategy being performed.
         """
@@ -776,7 +776,8 @@ class API(base.Base):
             'availability_zone': availability_zone,
             'root_device_name': root_device_name,
             'progress': 0,
-            'system_metadata': system_metadata}
+            'system_metadata': system_metadata,
+            'topology_priority': topology_priority}
 
         options_from_image = self._inherit_properties_from_image(
                 boot_meta, auto_disk_config)
@@ -923,7 +924,7 @@ class API(base.Base):
                requested_networks, config_drive,
                block_device_mapping, auto_disk_config,
                reservation_id=None, scheduler_hints=None,
-               legacy_bdm=True):
+               legacy_bdm=True,topology_priority=None):
         """Verify all the input parameters regardless of the provisioning
         strategy being performed and schedule the instance(s) for
         creation.
@@ -963,7 +964,7 @@ class API(base.Base):
                 forced_host, user_data, metadata, injected_files, access_ip_v4,
                 access_ip_v6, requested_networks, config_drive,
                 block_device_mapping, auto_disk_config, reservation_id,
-                max_count)
+                max_count,topology_priority)
 
         # max_net_count is the maximum number of instances requested by the
         # user adjusted for any network quota constraints, including
@@ -987,7 +988,6 @@ class API(base.Base):
 
         filter_properties = self._build_filter_properties(context,
                 scheduler_hints, forced_host, forced_node, instance_type)
-
         self._update_instance_group(context, instances, scheduler_hints)
 
         for instance in instances:

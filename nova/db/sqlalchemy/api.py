@@ -412,6 +412,10 @@ class InequalityCondition(object):
 
 
 ###################
+"""
+TopologyWheigher db calls implementation
+start
+"""
 
 def _traffic_get(context):
     query = model_query(context,models.TrafficInfo)
@@ -432,10 +436,17 @@ def traffic_get_avg(context,time):
                         filter(models.TrafficInfo.created_at > window).\
                         group_by(models.TrafficInfo.src,models.TrafficInfo.dst).\
                         all()
+    return result
 
-    #fields = ('src', 'dst', 'avg')
-    #return dict((field, int(result[idx] or 0))
-    #            for idx, field in enumerate(fields))
+def ping_get_avg(context,time):
+    window = timeutils.utcnow() - datetime.timedelta(seconds=time)
+    result = model_query(context,func.avg(models.PingInfo.latency).label("avg"),
+                        models.PingInfo.src,
+                        models.PingInfo.dst,
+                        base_model=models.PingInfo).\
+                        filter(models.PingInfo.created_at > window).\
+                        group_by(models.PingInfo.src,models.PingInfo.dst).\
+                        all()
     return result
 
 def _traffic_add(context,values):
@@ -481,6 +492,53 @@ def ping_get(context):
 def ping_add(context,values):
     return _ping_add(context,values)
 
+def _node_add(context,values):
+    datetime_keys = ('created_at', 'deleted_at', 'updated_at')
+    convert_objects_related_datetimes(values, *datetime_keys)
+    node_ref = models.NodeInfo()
+    node_ref.update(values)
+    node_ref.save()
+    return node_ref
+
+def _edge_add(context,values):
+    datetime_keys = ('created_at', 'deleted_at', 'updated_at')
+    convert_objects_related_datetimes(values, *datetime_keys)
+    edge_ref = models.EdgeInfo()
+    edge_ref.update(values)
+    edge_ref.save()
+    return edge_ref
+
+@require_admin_context
+def node_add(context,values):
+    return _node_add(context,values)
+
+@require_admin_context
+def edge_add(context,values):
+    return _edge_add(context,values)
+
+@require_admin_context
+def node_get(context):
+    query = model_query(context,models.NodeInfo)
+    return query.all()
+
+@require_admin_context
+def edge_get(context):
+    query = model_query(context,models.EdgeInfo)
+    return query.all()
+
+@require_admin_context
+def check_node(context):
+    query = model_query(context,func.count(models.NodeInfo.id).label("node_count"), base_model=models.NodeInfo)
+    return query.first()
+
+@require_admin_context
+def check_edge(context):
+    query = model_query(context,func.count(models.EdgeInfo.id).label("edge_count"), base_model=models.EdgeInfo)
+    return query.first()
+
+"""
+end
+"""
 
 @require_admin_context
 def service_destroy(context, service_id):

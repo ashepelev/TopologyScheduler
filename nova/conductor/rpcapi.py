@@ -176,6 +176,11 @@ class ConductorAPI(object):
                           updates=updates_p,
                           service=service)
 
+    """
+    TopologyWheiger methods references for db calls from compute nodes
+    start
+    """
+
     def traffic_add(self,context,values):
         cctxt = self.client.prepare()
         return cctxt.call(context, 'traffic_add',
@@ -185,6 +190,26 @@ class ConductorAPI(object):
         cctxt = self.client.prepare()
         return cctxt.call(context, 'ping_add',
                           values=values)
+
+    def node_get(self,context):
+        cctxt = self.client.prepare()
+        return cctxt.call(context, 'node_get')
+
+    def edge_get(self,context):
+        cctxt = self.client.prepare()
+        return cctxt.call(context, 'edge_get')
+
+    def check_node(self,context):
+        cctxt = self.client.prepare()
+        return cctxt.call(context, 'check_node')
+
+    def check_edge(self,context):
+        cctxt = self.client.prepare()
+        return cctxt.call(context, 'check_edge')
+
+    """
+    end
+    """
 
 
     def migration_get_in_progress_by_host_and_node(self, context,

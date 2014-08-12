@@ -1,14 +1,16 @@
-from nova.scheduler.weights.TopologyWeigher import YamlDoc, Node
+from TopologyWeigher import utils as topoutils
 
 __author__ = 'ash'
 
 import socket
-import fcntl
+
 from struct import *
 import pcapy
 from time import sleep
 from time import time
 import shlex
+import re
+import commands
 from subprocess import Popen, PIPE, STDOUT
 from threading import Timer
 from threading import Thread
@@ -16,60 +18,90 @@ from threading import Thread
 from nova.conductor import api as conductor_api
 from nova import context
 from nova.openstack.common import log as logging
+from oslo.config import cfg
 
+
+traffic_opts = [
+        cfg.StrOpt('traffic_sniffing_interface',
+                   default=None,
+                   help='The interface to listen on for the traffic'),
+        cfg.StrOpt('traffic_enable_topology_statistics',
+                   default=False,
+                   help='Collect the traffic and ping statistics for scheduling'),
+        cfg.IntOpt('refresh_traf_info',
+                   default=10,
+                   help='In seconds, how often to send traffic statistics to db'),
+        cfg.IntOpt('refresh_ping_info',
+                   default=10,
+                   help='In seconds, how often to send latency statistics to db'),
+        cfg.IntOpt('refresh_ping_make',
+                   default=5,
+                   help='In seconds, how often launch ping for known hosts')
+        ]
+
+CONF = cfg.CONF
+CONF.register_opts(traffic_opts)
 
 traffic_stat = dict()
 LOG = logging.getLogger("nova-compute")
-
+# Global param - used in ping class
+refresh_ping_make = int(CONF.refresh_ping_make)
 
 class ClientTraffic(Thread):
 
-    def __init__(self,sniff_int,log,topology_desc_path):
+    def __init__(self,sniff_int,log):
         Thread.__init__(self)
+        # The tread should work as a daemon
         self.daemon = True
-        self.topology_desc_path = topology_desc_path
-        self.get_topology_nodes()
-        self.node_dict = self.get_node_dict()
-        self.router_id = self.get_router_id()
+        self.error = False
+        #self.topology_desc_path = topology_desc_path
+        # Get the context for conductor calls
+        self.context = context.get_admin_context()
+        self.conductor = conductor_api.API()
+        # Get the information about the topology from the db
+        topoinfo = topoutils.get_nodes(self.context, self.conductor)
+        # It might not be in the db - the scheduler have not yet written it
+        # Or the scheduler haven't yet started
+        if not topoinfo:
+            LOG.error("Couldn't get the info about topology")
+            self.error = True
+            return
+        else:
+            self.node_list = topoinfo
+        # Transforming the node list to dict <ip>:<id>
+        self.node_dict = topoutils.get_node_dict(self.node_list)
+        # Getting information about the router node id and IP
+        (self.router_id,self.router_ip) = topoutils.get_router_id_ip(self.node_list)
+        # The interface to listen for the traffic
         self.interface = sniff_int
-        self.ip_addr = self.get_ip_address(sniff_int)
-
+        # This node's ip_addr
+        self.ip_addr = topoutils.get_ip_address(str(sniff_int))
+        # Initial value of bw_id
+        # TODO: currently doesn't used
         self.bw_id = 0
-        self.refresh_time = 10
-        self.my_id = self.get_my_id()
+        # Refresh time of sending the traffic info
+        self.refresh_time = int(CONF.refresh_traf_info)
+        # Refresh time of sending the ping info
+        self.refresh_ping_time = int(CONF.refresh_ping_info)
+        # The current node's id
+        self.my_id = topoutils.get_my_id(self.node_dict, self.ip_addr)
         self.time_to_send = False
-
         self.ping_info = dict()
         self.log = log
-        self.conductor = conductor_api.API()
-
-        self.router_ip = self.get_router_ip()
-
-        #greenthread.spawn(self.launch)
-
-        #print "Client initiated"
 
     def run(self):
-        #print "Try to launch"
-        #thread = Thread(target=self.launch())
-        #thread.daemon = True
-        #thread.start()
-        self.launch()
+        if not self.error:
+            self.launch()
 
     def eth_addr (a) :
         b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
         return b
 
-    def get_ip_address(self,ifname):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,  # SIOCGIFADDR
-            pack('256s', ifname[:15])
-        )[20:24])
-
-    #function to parse a packet
-    def parse_packet(self,packet) :
+    def parse_packet(self,packet):
+        """
+        Function that parses the sniffed packet
+        To obtain it's dst/src IPs and it's size
+        """
 
         #parse ethernet header
         eth_length = 14
@@ -94,10 +126,8 @@ class ClientTraffic(Thread):
             ihl = version_ihl & 0xF
             iph_length = ihl * 4
 
-            #ttl = iph[5]
-            #protocol = iph[6]
-            s_addr = socket.inet_ntoa(iph[8]);
-            d_addr = socket.inet_ntoa(iph[9]);
+            s_addr = socket.inet_ntoa(iph[8])
+            d_addr = socket.inet_ntoa(iph[9])
 
             protocol = iph[6]
             res = True
@@ -116,79 +146,53 @@ class ClientTraffic(Thread):
                 return (s_addr,d_addr,len(packet),res)
         return (0,0,0,False)
 
-    def get_topology_nodes(self):
-        yd = YamlDoc.YamlDoc(self.topology_desc_path + 'nodes.yaml',self.topology_desc_path +  'edges.yaml')
-        self.node_list = yd.node_list
-
-    def get_node_dict(self):
-        node_dict = dict()
-        for x in self.node_list:
-            if not isinstance(x, Node.Switch):
-                node_dict[x.ip_addr] = x.id
-        return node_dict
-
-    def get_router_id(self):
-        for x in self.node_list:
-            if isinstance(x, Node.Router):
-                return x.id
-        print "No router found"
-
-    def get_router_ip(self):
-        for x in self.node_list:
-            if isinstance(x, Node.Router):
-                return x.ip_addr
-        return False
-
-    def get_hosts_id(self,src_ip,dst_ip):
-        #traffic_server = self.server.traffic
-        if src_ip not in self.node_dict:
-            src_id = self.router_id
-        else:
-            src_id = self.node_dict[src_ip]
-        if dst_ip not in self.node_dict:
-            dst_id = self.router_id
-        else:
-            dst_id = self.node_dict[dst_ip]
-        return (src_id,dst_id)
-
-    def get_my_id(self):
-        return self.node_dict[self.ip_addr]
-
     def process_ping(self):
         self.send_ping()
 
     def send_ping(self):
-        #msgs = "Ping:"
-        self.log.debug("Sending ping")
+        """
+        Function sends ping to db via conductor
+        """
         for key in self.ping_info:
             ping = self.ping_info[key]
-            (src_id,dst_id) = self.get_hosts_id(ping.src,ping.dst)
+            # Transforming src/dst IPs to nodes' ids
+            (src_id,dst_id) = topoutils.get_hosts_id(ping.src, ping.dst, self.node_list, self.router_id)
             ping_value = ping.result
+            # constructing values for inserting into db
             resources = {}
             resources['src'] = src_id
             resources['dst'] = dst_id
             resources['latency'] = ping_value
             self.conductor.ping_add(self.context,resources)
-            #msg = str(src_id)+"|"+ str(dst_id) + "|" + str(ping_value) + ','
-            #msgs += msg
-        #msgs = msgs.rstrip(',')
-        #print "Sending: " + msgs
-        #self.socket.sendall(msgs)
+
 
     def handle_new_ips(self,packet):
+        """
+        Function handles new IPs in src/dst packet
+        And creates a new task for ping command
+        """
+        # Setting dst to be not the same as node's ip_addr
         if packet.src == self.ip_addr:
             dst = packet.dst
         else:
             dst = packet.src
+        # If there is no node with that IP
+        # We believe that it's an external traffic
         if dst not in self.node_dict:
             dst = self.router_ip
         if not (self.ip_addr,dst) in self.ping_info:
+            # Creating the task and starting it
             self.ping_info[self.ip_addr,dst] = ip_ping(self.ip_addr,dst)
             self.ping_info[self.ip_addr,dst].start()
 
     def handle_packet(self,packet):
+        """
+        Handles new obtained packet
+        """
         self.handle_new_ips(packet)
-        (src_id,dst_id) = self.get_hosts_id(packet.src,packet.dst)
+        # Transforming src/dst IPs to nodes' ids
+        (src_id,dst_id) = topoutils.get_hosts_id(packet.src,packet.dst,self.node_dict,self.router_id)
+        # If there is no info about it - saving
         if not (src_id,dst_id) in traffic_stat:
             #self.process_ping(packet)
             nl = NetworkLoad()
@@ -198,88 +202,60 @@ class ClientTraffic(Thread):
             traffic_stat[(src_id,dst_id)].inc(packet.length)
 
     def process_bandwidth(self):
-        #os.system("clear")
-        #print "Process bandwidth: Len Keys: " + str(len(traffic_stat.keys()))
+        """
+        Function calculates the traffic before sending to db
+        """
         for k in traffic_stat.keys():
+            # (number of bytes in packets sniffed for refresh_time) / refresh_time = bytes/s
             bandwidth = traffic_stat[k].count / self.refresh_time
             (src,dst) = k
-            #self.bw_hist.append((src,dst),bandwidth,capt_time,self.bw_id)
             traffic_stat[k].bandwidth = bandwidth
-            #latency = traffic_stat[k].ping
-            #print "Src: " + str(src) + " Dst: " + str(dst) + " Bandwidth: " + str(bandwidth)
-        #sys.stdout.flush()
 
     def send_traffic(self):
-        #msgs = "Traffic:"
-        #self.log.debug("Sending...")
+        """
+        Function sends traffic to db via nova-conductor
+        """
         for link in traffic_stat.keys():
             (src_id,dst_id) = link
-            #count = traffic_stat[link].count
             bandwidth = traffic_stat[link].bandwidth
+            # constructing values for inserting into db
             resources = {}
             resources['src'] = src_id
             resources['dst'] = dst_id
             resources['bytes'] = bandwidth
             resources['m_id'] = self.bw_id
-            #msg = str(src_id) + '|' + str(dst_id) + '|' + str(bandwidth) + ','
-            #msgs += msg
-            #self.log.debug("Send to conductor")
             self.conductor.traffic_add(self.context, resources)
-        #print "Sending: " + msgs
-        #msgs = msgs.rstrip(',') # delete last comma
-        #conductor.traffic_add(self.context,)
-        #self.socket.send(msgs)
+        # the variable that keeps the id number if the measurement
         self.bw_id += 1
+        # clearing the history for new portion of data
         traffic_stat.clear()
 
-
-
-    def refresh_send(self):
-        self.time_to_send = True
-        self.log.debug("Settted")
-        self.process_bandwidth()
-        self.send_traffic()
-
-    #def launch(self,hostname,server_port):
     def launch(self):
-        #print "Launched!"
-        #self.server_port = server_port
-        #ipaddr = socket.gethostbyname(hostname)
-        #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #self.socket = s
-        #s.connect((hostname, self.server_port))
-        #self.log.debug("LAUNCHED")
-        self.context = context.get_admin_context()
-        #print "Connected!"
-        #print "Listen on interface: " + self.interface
+        """
+        Main cycle of sniffing the traffic
+        """
+        # opening pcap on the setted interface
         cap = pcapy.open_live(self.interface,65536,1,0)
+        # fix time when we start
         self.start_time = time()
-        #rt_traffic = RepeatedTimer(2,self.refresh_send) # Sending traffic
-        rt_ping = RepeatedTimer(4,self.process_ping) # Sending ping
-        #greenthread.sleep(0)
+        # Timer that sends ping to db every refresh_ping_time seconds
+        rt_ping = RepeatedTimer(self.refresh_ping_time,self.process_ping)
+        LOG.debug("Starting traffic collector agent")
         while (1) :
-            #sys.stdout.write("1")
             (header, packet) = cap.next()
-            #sys.stdout.write("1")
-            #sys.stdout.flush()
-            #capt_time = clock()
             (src,dst,leng,res) = self.parse_packet(packet)
             if not res:
                 #print "Not res"
                 continue
             pk = Packet(src,dst,leng)
-            #print "Captured packet. Src: " + str(src) + " Dst: " + str(dst) + " Length: " + str(leng)
             self.handle_packet(pk)
+            # if the elapsed time is more then refresh_time
+            # Send traffic information to db
             if time() - self.start_time > self.refresh_time:
-                sleep(0.01)
+                # reset timer
                 self.start_time = time()
-                #print "Clock!"
-                #self.log.debug("!!!!!!!!!!!!TIMER_READY!!!!!!!!!!!!!!!!")
-                self.time_to_send = False
                 self.process_bandwidth()
                 self.send_traffic()
-
-        #s.close()
 
 class Packet:
     """
@@ -291,6 +267,9 @@ class Packet:
         self.dst = dst
         self.length = length
 
+# Class described the information of load
+# between src and dst
+# It's instance aggregates the traffic on the route
 class NetworkLoad:
 
     def __init__(self):
@@ -312,6 +291,9 @@ class NetworkLoad:
             self.metric_ind += 1
 
 class RepeatedTimer(object):
+    """
+    Help-class for launching timer in a separate thread
+    """
     def __init__(self, interval, function, *args, **kwargs):
         self._timer     = None
         self.interval   = interval
@@ -336,43 +318,52 @@ class RepeatedTimer(object):
         self._timer.cancel()
         self.is_running = False
 
-
 class ip_ping(Thread):
-   def __init__ (self,src,dst):
+    """
+    Class to launch ping
+    For each new topology node's IP launching an instance of this class
+    That pings the node every refresh_ping_make seconds
+    """
+    def __init__ (self,src,dst):
         Thread.__init__(self)
         self.src = src
         self.dst = dst
         self.result = -1
-        self.repeat = 4
-        #self.__successful_pings = -1
+        self.repeat = refresh_ping_make
 
-   def run(self):
+    def run(self):
+        p = re.compile('^.*time\=([0-9\.]*)\ .*',flags=re.MULTILINE)
         while 1:
             src = self.src
             host = self.dst
             host = host.split(':')[0]
-            #print "Ping launched"
-            LOG.debug('Launching ping')
-            cmd = "fping {host} -C 1 -q".format(host=host)
-            res = [float(x) for x in self.get_simple_cmd_output(cmd).strip().split(':')[-1].split() if x != '-']
-            if len(res) > 0:
-                result = sum(res) / len(res)
+            # if make -c > 1 then need to handle more output
+            # better to use fping - but not supported for default on systems
+            status, output = commands.getstatusoutput("ping -c 1 -b {host}".format(host=host))
+            s = p.search(output)
+            if s is None:
+                print output
+                res = 9999.0
             else:
-                result = 9999.0
-            #print "Result: " + str((src,host,result))
-            self.result = result
+                res = float(s.group(1))
+            self.result = res
             sleep(self.repeat)
 
-   def get_simple_cmd_output(self,cmd, stderr=STDOUT):
+    def get_simple_cmd_output(self,cmd, stderr=STDOUT):
         """
         Execute a simple external command and get its output.
         """
         args = shlex.split(cmd)
         return Popen(args, stdout=PIPE, stderr=stderr).communicate()[0]
 
-   def ready(self):
+    def ready(self):
        return self.result != -1
 
-#conductor_api = conductor.API()
-client = ClientTraffic("eth0.800",LOG,'/opt/stack/TopologyScheduler/current-topology/')
-client.start()
+# Checking if the traffic statistics sniffer is enabled
+enable_stat = CONF.traffic_enable_topology_statistics
+enable_stat = bool(enable_stat)
+if enable_stat:
+    # Getting the interface to listen on
+    interface = str(CONF.traffic_sniffing_interface)
+    client = ClientTraffic(interface, LOG)
+    client.start()

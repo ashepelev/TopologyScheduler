@@ -6,9 +6,8 @@ import copy
 
 class Edge:
 
-    def __init__(self,node_pair,maxb):
+    def __init__(self,node_pair):
         self.node_pair = node_pair
-        self.maxb = maxb
 
 
     def init_weights(self):
@@ -25,6 +24,7 @@ class Edge:
 
         self.cur_bw_id = -1 # current bandwidth capture period
         self.sim_con_total = 0 # sum of simultaneous (concurrent) connections on this edge
+        self.latency = 0
 
     def calculate_stats(self):
         """
@@ -58,20 +58,6 @@ class Edge:
         return "<Edge: %s : %s" % (self.node_pair,self.sim_con_total)
 
 
-        # For a while we don't need to keep the whole history.
-        # Just the main characteristics - avg, max & min, count
-        """
-        self.bandhist.append(edgeinfo)
-        if not self.hist_growed:
-            if self.bandhist[len(self.bandhist)-1].time - self.bandhist[0] > self.histtime:
-                self.hist_growed = True
-                self.bandhist.popleft()
-        else:
-            self.bandhist.popleft()
-        self.calc_weights()
-        """
-
-
     @staticmethod
     def edges_list_to_dict(edge_list):
         """
@@ -80,7 +66,8 @@ class Edge:
         res = dict()
         for edge in edge_list:
             res[(edge.node_pair[0]),(edge.node_pair[1])] = edge
-            edge_reverse = Edge((edge.node_pair[1],edge.node_pair[0]),edge.maxb)
+            # Saving the reverse edge for opposite traffic
+            edge_reverse = Edge((edge.node_pair[1],edge.node_pair[0]))
             edge_reverse.init_weights()
             res[(edge.node_pair[1]),(edge.node_pair[0])] = edge_reverse
         return res
@@ -89,7 +76,6 @@ class EdgeInfo:
     """
     Class describes the portion of traffic information for the bw_id period
     """
-
     def __init__(self,value,bw_id):
         self.value = value
         #self.time = time

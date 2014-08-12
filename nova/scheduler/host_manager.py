@@ -34,6 +34,10 @@ from nova.pci import pci_request
 from nova.pci import pci_stats
 from nova.scheduler import filters
 from nova.scheduler import weights
+from nova import context
+from nova.scheduler.weights.TopologyWeigher.utils import get_topology
+from nova.scheduler.weights.TopologyWeigher.utils import get_nodes_and_edges
+from nova.scheduler.weights.TopologyWeigher import Node
 
 host_manager_opts = [
     cfg.MultiStrOpt('scheduler_available_filters',
@@ -58,6 +62,7 @@ host_manager_opts = [
     cfg.ListOpt('scheduler_weight_classes',
                 default=['nova.scheduler.weights.all_weighers'],
                 help='Which weight class names to use for weighing hosts'),
+
     ]
 
 CONF = cfg.CONF
@@ -273,6 +278,16 @@ class HostManager(object):
         self.weight_classes = self.weight_handler.get_matching_classes(
                 CONF.scheduler_weight_classes)
 
+    def get_node_type(self,node):
+        if isinstance(node,Node.Switch):
+            return "Switch"
+        if isinstance(node,Node.Router):
+            return "Router"
+        if isinstance(node,Node.ComputeNode):
+            return "ComputeNode"
+        if isinstance(node,Node.CloudController):
+            return "CloudController"
+
     def _choose_host_filters(self, filter_cls_names):
         """Since the caller may specify which filters to use we need
         to have an authoritative list of what is permissible. This
@@ -299,7 +314,6 @@ class HostManager(object):
     def get_filtered_hosts(self, hosts, filter_properties,
             filter_class_names=None, index=0):
         """Filter hosts and return only ones passing all filters."""
-
         def _strip_ignore_hosts(host_map, hosts_to_ignore):
             ignored_hosts = []
             for host in hosts_to_ignore:

@@ -18,7 +18,7 @@ class Node:
 
 class Switch(Node):
     """
-    Characterizes only by ip.
+    Characterizes only by id.
     """
 
     def __init__(self, vid):
@@ -64,6 +64,7 @@ class Endpoint(Node):
         self.id = vid
         self.ip_addr = ip_addr
         self.hostname = hostname
+
 
     def assign_ip(self,ipa):
         self.ip_addr = ipa

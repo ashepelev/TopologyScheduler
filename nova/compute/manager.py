@@ -599,14 +599,6 @@ class ComputeManager(manager.Manager):
         self.use_legacy_block_device_info = \
                             self.driver.need_legacy_block_device_info
 
-        #self.run_traffic_monitor()
-
-    def run_traffic_monitor(self):
-        client = traffic_monitor.ClientTraffic("eth0.800",LOG,'/opt/stack/TopologyScheduler/current-topology/')
-        client.start()
-
-
-
     def _get_resource_tracker(self, nodename):
         rt = self._resource_tracker_dict.get(nodename)
         if not rt:
@@ -1960,7 +1952,7 @@ class ComputeManager(manager.Manager):
                 self._cleanup_allocated_networks(context, instance,
                         requested_networks)
                 self._set_instance_error_state(context, instance)
-
+        print "Compute/manager: filter_props = " + str(filter_properties)
         do_build_and_run_instance(context, instance, image, request_spec,
                 filter_properties, admin_password, injected_files,
                 requested_networks, security_groups, block_device_mapping,
@@ -1981,6 +1973,7 @@ class ComputeManager(manager.Manager):
                 # the host is set on the instance.
                 self._validate_instance_group_policy(context, instance,
                         filter_properties)
+                print "_build_and_run: filter_props: "  + str(filter_properties)
                 with self._build_resources(context, instance,
                         requested_networks, security_groups, image,
                         block_device_mapping) as resources:

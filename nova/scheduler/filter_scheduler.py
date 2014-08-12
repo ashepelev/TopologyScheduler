@@ -223,6 +223,8 @@ class FilterScheduler(driver.Scheduler):
         """Returns a list of hosts that meet the required specs,
         ordered by their fitness.
         """
+        print "Filter scheduler: " + str(filter_properties)
+        topology_priority = filter_properties['instance_type']['topology_priority']
         elevated = context.elevated()
         instance_properties = request_spec['instance_properties']
         instance_type = request_spec.get("instance_type", None)
@@ -240,7 +242,7 @@ class FilterScheduler(driver.Scheduler):
 
         self.populate_filter_properties(request_spec,
                                         filter_properties)
-
+        filter_properties['instance_type']['topology_priority'] = topology_priority
         # Find our local list of acceptable hosts by repeatedly
         # filtering and weighing our options. Each time we choose a
         # host, we virtually consume resources on it so subsequent

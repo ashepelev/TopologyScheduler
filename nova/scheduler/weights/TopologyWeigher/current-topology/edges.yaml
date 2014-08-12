@@ -1,9 +1,6 @@
  - !!python/object:nova.scheduler.weights.TopologyWeigher.Edge.Edge
-   maxb: 100
    node_pair: !!python/tuple [0, 1]
  - !!python/object:nova.scheduler.weights.TopologyWeigher.Edge.Edge
-   maxb: 100
    node_pair: !!python/tuple [0, 2]
  - !!python/object:nova.scheduler.weights.TopologyWeigher.Edge.Edge
-   maxb: 100
    node_pair: !!python/tuple [0, 3]
